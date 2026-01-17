@@ -2,6 +2,8 @@ import { memo } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Mic, MicOff, Phone, PhoneOff } from 'lucide-react-native';
 
+import type { StyleProp, ViewStyle } from 'react-native';
+
 interface VoiceControlBarProps {
   isConnected: boolean;
   isConnecting: boolean;
@@ -37,18 +39,18 @@ function VoiceControlBarComponent({
 
   return (
     <View
-      className="mx-4 mb-6 rounded-2xl p-4"
+      className="mx-4 mb-6 rounded-2xl p-4 border border-slate-700"
       style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        backgroundColor: 'rgba(30, 41, 59, 0.95)', // surface-elevated with transparency
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.25,
         shadowRadius: 12,
         elevation: 8,
       }}
     >
       {/* ステータステキスト */}
-      <Text className="text-sm text-gray-500 text-center mb-3" numberOfLines={2}>
+      <Text className="text-car-base text-text-secondary text-center mb-3" numberOfLines={2}>
         {getStatusText()}
       </Text>
 
@@ -58,9 +60,18 @@ function VoiceControlBarComponent({
         <Pressable
           onPress={isConnected ? onDisconnect : onConnect}
           disabled={isConnecting}
+          accessibilityRole="button"
+          accessibilityLabel={isConnected ? '通話を終了' : '通話を開始'}
+          accessibilityState={{ disabled: isConnecting }}
+          style={({ pressed }): StyleProp<ViewStyle> => [
+            {
+              opacity: isConnecting ? 0.5 : pressed ? 0.8 : 1,
+              transform: [{ scale: pressed ? 0.95 : 1 }],
+            },
+          ]}
           className={`w-14 h-14 rounded-full items-center justify-center ${
-            isConnected ? 'bg-red-500' : 'bg-green-500'
-          } ${isConnecting ? 'opacity-50' : ''}`}
+            isConnected ? 'bg-error' : 'bg-success'
+          }`}
         >
           {isConnected ? (
             <PhoneOff size={24} color="#ffffff" />
@@ -73,9 +84,18 @@ function VoiceControlBarComponent({
         <Pressable
           onPress={isListening ? onStopListening : onStartListening}
           disabled={!isConnected || isProcessing || isSpeaking}
+          accessibilityRole="button"
+          accessibilityLabel={isListening ? 'マイクを停止' : 'マイクを開始'}
+          accessibilityState={{ disabled: !isConnected || isProcessing || isSpeaking }}
+          style={({ pressed }): StyleProp<ViewStyle> => [
+            {
+              opacity: !isConnected || isProcessing || isSpeaking ? 0.5 : pressed ? 0.8 : 1,
+              transform: [{ scale: pressed ? 0.95 : 1 }],
+            },
+          ]}
           className={`w-16 h-16 rounded-full items-center justify-center ${
-            isListening ? 'bg-red-500' : isConnected ? 'bg-blue-500' : 'bg-gray-300'
-          } ${!isConnected || isProcessing || isSpeaking ? 'opacity-50' : ''}`}
+            isListening ? 'bg-error' : isConnected ? 'bg-primary-600' : 'bg-surface-overlay'
+          }`}
         >
           {isListening ? <MicOff size={28} color="#ffffff" /> : <Mic size={28} color="#ffffff" />}
         </Pressable>
@@ -83,10 +103,10 @@ function VoiceControlBarComponent({
 
       {/* ボタンラベル */}
       <View className="flex-row justify-center gap-8 mt-2">
-        <Text className="text-xs text-gray-400 w-14 text-center">
+        <Text className="text-car-sm text-text-muted w-14 text-center">
           {isConnected ? '終了' : '開始'}
         </Text>
-        <Text className="text-xs text-gray-400 w-16 text-center">
+        <Text className="text-car-sm text-text-muted w-16 text-center">
           {isListening ? '停止' : 'マイク'}
         </Text>
       </View>

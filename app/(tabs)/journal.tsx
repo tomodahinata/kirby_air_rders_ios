@@ -51,9 +51,11 @@ export default function JournalScreen() {
   const renderEmptyState = useCallback(
     () => (
       <View className="flex-1 items-center justify-center py-20">
-        <BookOpen size={64} color="#6b7280" />
-        <Text className="text-xl font-semibold text-gray-300 mt-4">まだ記録がありません</Text>
-        <Text className="text-gray-500 mt-2 text-center px-8">
+        <BookOpen size={64} color="#64748b" />
+        <Text className="text-car-lg font-semibold text-text-secondary mt-4">
+          まだ記録がありません
+        </Text>
+        <Text className="text-text-muted mt-2 text-center px-8">
           お気に入りの場所や思い出のスポットを{'\n'}記録してみましょう
         </Text>
         <Button onPress={handleAddPress} size="lg" className="mt-6">
@@ -67,11 +69,11 @@ export default function JournalScreen() {
   const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortOption)?.label ?? '';
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-900">
+    <SafeAreaView className="flex-1 bg-surface-base">
       {/* Header */}
       <View className="px-4 pt-4 pb-2">
         <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-2xl font-bold text-white">My Journal</Text>
+          <Text className="text-car-2xl font-bold text-text-primary">My Journal</Text>
           <Button onPress={handleAddPress} size="sm" icon={<Plus size={18} color="#fff" />}>
             追加
           </Button>
@@ -82,25 +84,31 @@ export default function JournalScreen() {
           <View className="relative">
             <Pressable
               onPress={() => setShowSortOptions(!showSortOptions)}
-              className="flex-row items-center bg-slate-800 rounded-lg px-3 py-2 self-start"
+              accessibilityRole="button"
+              accessibilityLabel={`並び替え: ${currentSortLabel}`}
+              accessibilityHint="タップして並び替えオプションを表示"
+              className="flex-row items-center bg-surface-elevated rounded-xl px-4 py-3 min-h-[48px] self-start"
             >
-              <Filter size={16} color="#9ca3af" />
-              <Text className="text-gray-400 text-sm ml-2">{currentSortLabel}</Text>
+              <Filter size={18} color="#94a3b8" />
+              <Text className="text-text-secondary text-car-base ml-2">{currentSortLabel}</Text>
             </Pressable>
 
             {showSortOptions && (
-              <View className="absolute top-12 left-0 bg-slate-800 rounded-lg py-2 z-10 shadow-lg min-w-[200px]">
+              <View className="absolute top-14 left-0 bg-surface-elevated rounded-xl py-2 z-10 shadow-lg min-w-[220px] border border-slate-700">
                 {SORT_OPTIONS.map((option) => (
                   <Pressable
                     key={option.value}
                     onPress={() => handleSortChange(option.value)}
-                    className={`px-4 py-3 ${option.value === sortOption ? 'bg-slate-700' : ''}`}
+                    accessibilityRole="menuitem"
+                    className={`px-4 py-3 min-h-[48px] justify-center ${
+                      option.value === sortOption ? 'bg-surface-overlay' : ''
+                    }`}
                   >
                     <Text
-                      className={`text-sm ${
+                      className={`text-car-base ${
                         option.value === sortOption
-                          ? 'text-orange-400 font-semibold'
-                          : 'text-gray-300'
+                          ? 'text-warning font-semibold'
+                          : 'text-text-secondary'
                       }`}
                     >
                       {option.label}
@@ -114,7 +122,7 @@ export default function JournalScreen() {
 
         {/* Entry Count */}
         {entries.length > 0 && (
-          <Text className="text-gray-500 text-sm mt-2">{entries.length}件の記録</Text>
+          <Text className="text-text-muted text-car-sm mt-3">{entries.length}件の記録</Text>
         )}
       </View>
 

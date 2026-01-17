@@ -51,8 +51,8 @@ export default function JournalDetailScreen() {
 
   if (!entry) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center">
-        <Text className="text-gray-500">記録が見つかりません</Text>
+      <SafeAreaView className="flex-1 bg-surface-base items-center justify-center">
+        <Text className="text-text-secondary">記録が見つかりません</Text>
         <Button onPress={() => router.back()} size="md" className="mt-4">
           戻る
         </Button>
@@ -85,15 +85,15 @@ export default function JournalDetailScreen() {
     .join(' ');
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-surface-base">
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Place Name Header */}
-        <View className="bg-white px-4 py-6 border-b border-gray-100">
-          <Text className="text-2xl font-bold text-gray-900 mb-2">{entry.place_name}</Text>
+        <View className="bg-surface-elevated px-4 py-6 border-b border-slate-700">
+          <Text className="text-car-2xl font-bold text-text-primary mb-2">{entry.place_name}</Text>
 
           {/* Rating */}
           <View className="flex-row items-center">
@@ -101,7 +101,7 @@ export default function JournalDetailScreen() {
               <Star
                 key={i}
                 size={24}
-                color={i < entry.rating ? '#f59e0b' : '#d1d5db'}
+                color={i < entry.rating ? '#f59e0b' : '#475569'}
                 fill={i < entry.rating ? '#f59e0b' : 'transparent'}
               />
             ))}
@@ -109,22 +109,24 @@ export default function JournalDetailScreen() {
         </View>
 
         {/* Details */}
-        <View className="bg-white mt-3 px-4 py-4">
+        <View className="bg-surface-elevated mt-3 px-4 py-4">
           {/* Visited Date */}
-          <View className="flex-row items-center py-3 border-b border-gray-100">
-            <Calendar size={20} color="#6b7280" />
+          <View className="flex-row items-center py-3 border-b border-slate-700">
+            <Calendar size={20} color="#94a3b8" />
             <View className="ml-3">
-              <Text className="text-xs text-gray-500">訪問日時</Text>
-              <Text className="text-base text-gray-900">{formatDateTime(entry.visited_at)}</Text>
+              <Text className="text-car-sm text-text-muted">訪問日時</Text>
+              <Text className="text-car-base text-text-primary">
+                {formatDateTime(entry.visited_at)}
+              </Text>
             </View>
           </View>
 
           {/* Address */}
           <View className="flex-row items-start py-3">
-            <MapPin size={20} color="#6b7280" className="mt-1" />
+            <MapPin size={20} color="#94a3b8" className="mt-1" />
             <View className="ml-3 flex-1">
-              <Text className="text-xs text-gray-500">住所</Text>
-              <Text className="text-base text-gray-900">{fullAddress}</Text>
+              <Text className="text-car-sm text-text-muted">住所</Text>
+              <Text className="text-car-base text-text-primary">{fullAddress}</Text>
             </View>
           </View>
 
@@ -135,29 +137,31 @@ export default function JournalDetailScreen() {
                 // TODO: Open in maps app with Linking.openURL
                 // const url = `https://www.google.com/maps/dir/?api=1&destination=${entry.location?.lat},${entry.location?.lng}`;
               }}
-              className="flex-row items-center justify-center bg-blue-50 rounded-xl py-3 mt-2"
+              accessibilityRole="button"
+              accessibilityLabel="ナビを開始"
+              className="flex-row items-center justify-center bg-primary-600/20 rounded-xl py-4 mt-2 min-h-[52px]"
             >
-              <Navigation size={18} color="#3b82f6" />
-              <Text className="text-blue-600 font-medium ml-2">ナビを開始</Text>
+              <Navigation size={18} color="#60a5fa" />
+              <Text className="text-primary-400 font-medium ml-2 text-car-base">ナビを開始</Text>
             </Pressable>
           )}
         </View>
 
         {/* Notes */}
         {entry.notes && (
-          <View className="bg-white mt-3 px-4 py-4">
-            <Text className="text-xs text-gray-500 mb-2">メモ</Text>
-            <Text className="text-base text-gray-900 leading-6">{entry.notes}</Text>
+          <View className="bg-surface-elevated mt-3 px-4 py-4">
+            <Text className="text-car-sm text-text-muted mb-2">メモ</Text>
+            <Text className="text-car-base text-text-primary leading-6">{entry.notes}</Text>
           </View>
         )}
 
         {/* Metadata */}
         <View className="px-4 py-4">
-          <Text className="text-xs text-gray-400">
+          <Text className="text-car-sm text-text-muted">
             作成: {new Date(entry.created_at).toLocaleDateString('ja-JP')}
           </Text>
           {entry.updated_at !== entry.created_at && (
-            <Text className="text-xs text-gray-400 mt-1">
+            <Text className="text-car-sm text-text-muted mt-1">
               更新: {new Date(entry.updated_at).toLocaleDateString('ja-JP')}
             </Text>
           )}
@@ -165,7 +169,7 @@ export default function JournalDetailScreen() {
       </ScrollView>
 
       {/* Action Buttons */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-8 flex-row gap-3">
+      <View className="absolute bottom-0 left-0 right-0 bg-surface-elevated border-t border-slate-700 p-4 pb-8 flex-row gap-3">
         <Button
           onPress={handleDelete}
           variant="danger"

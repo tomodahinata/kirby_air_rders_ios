@@ -71,7 +71,7 @@ export function CopilotScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#e8eaed]" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-surface-base" edges={['top']}>
       <Header
         title="Data Plug Copilot"
         rightElement={<ConnectionBadge isConnected={isConnected} isConnecting={isConnecting} />}
@@ -88,10 +88,10 @@ export function CopilotScreen() {
         {/* 会話履歴セクション */}
         {conversationHistory.length > 0 && (
           <View className="mb-4">
-            <Text className="text-xs font-semibold tracking-widest text-gray-500 uppercase mb-3 px-1">
+            <Text className="text-label tracking-widest text-text-muted uppercase mb-3 px-1">
               Conversation
             </Text>
-            <View className="bg-gray-100 rounded-2xl p-4">
+            <View className="bg-surface-elevated rounded-2xl p-4 border border-slate-700">
               {conversationHistory.map((entry) => (
                 <ConversationItem key={entry.id} entry={entry} />
               ))}
@@ -101,7 +101,7 @@ export function CopilotScreen() {
 
         {/* AI Suggestions Section */}
         <View className="mb-4">
-          <Text className="text-xs font-semibold tracking-widest text-gray-500 uppercase mb-3 px-1">
+          <Text className="text-label tracking-widest text-text-muted uppercase mb-3 px-1">
             AI Suggestions
           </Text>
 
