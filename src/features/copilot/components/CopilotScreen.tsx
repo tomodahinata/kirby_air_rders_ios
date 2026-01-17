@@ -1,26 +1,81 @@
-import { useCallback, useState } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { useCallback } from 'react';
+import { View, Text, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Header } from '@/shared/components/layout/Header';
 import { CurrentContextCard } from '@/features/navigation/components/CurrentContextCard';
 import { AISuggestionCard } from '@/features/suggestion/components/AISuggestionCard';
-import { VoiceListeningBar } from '@/shared/components/ui/VoiceListeningBar';
+import {
+  useVoiceChat,
+  ConnectionBadge,
+  ConversationItem,
+  VoiceControlBar,
+} from '@/features/voice-chat';
 
 export function CopilotScreen() {
-  const [isListening, setIsListening] = useState(true);
+  const {
+    conversationHistory,
+    currentTranscript,
+    error,
+    isConnected,
+    isConnecting,
+    isListening,
+    isProcessing,
+    isSpeaking,
+    connect,
+    disconnect,
+    startListening,
+    stopListening,
+    clearError,
+  } = useVoiceChat({
+    onError: (err) => {
+      Alert.alert('エラー', err.message);
+    },
+  });
 
-  const handleVoicePress = useCallback(() => {
-    setIsListening((prev) => !prev);
-  }, []);
+  const handleConnect = useCallback(async () => {
+    try {
+      await connect();
+    } catch {
+      Alert.alert('接続エラー', 'サーバーに接続できませんでした');
+    }
+  }, [connect]);
+
+  const handleDisconnect = useCallback(() => {
+    disconnect();
+  }, [disconnect]);
+
+  const handleStartListening = useCallback(async () => {
+    try {
+      await startListening();
+    } catch {
+      Alert.alert('録音エラー', 'マイクにアクセスできませんでした');
+    }
+  }, [startListening]);
+
+  const handleStopListening = useCallback(async () => {
+    try {
+      await stopListening();
+    } catch {
+      Alert.alert('録音エラー', '録音の停止に失敗しました');
+    }
+  }, [stopListening]);
 
   const handleSuggestionPress = useCallback((suggestionId: string) => {
     console.log('Selected suggestion:', suggestionId);
   }, []);
 
+  // エラー表示
+  if (error) {
+    Alert.alert('エラー', error, [{ text: 'OK', onPress: clearError }]);
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-[#e8eaed]" edges={['top']}>
-      <Header title="Data Plug Copilot" />
+      <Header
+        title="Data Plug Copilot"
+        rightElement={<ConnectionBadge isConnected={isConnected} isConnecting={isConnecting} />}
+      />
 
       <ScrollView
         className="flex-1"
@@ -29,6 +84,20 @@ export function CopilotScreen() {
       >
         {/* Current Context Card */}
         <CurrentContextCard minutesLeft={12} destination="Roppongi Hills" eta="11:15 AM" />
+
+        {/* 会話履歴セクション */}
+        {conversationHistory.length > 0 && (
+          <View className="mb-4">
+            <Text className="text-xs font-semibold tracking-widest text-gray-500 uppercase mb-3 px-1">
+              Conversation
+            </Text>
+            <View className="bg-gray-100 rounded-2xl p-4">
+              {conversationHistory.map((entry) => (
+                <ConversationItem key={entry.id} entry={entry} />
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* AI Suggestions Section */}
         <View className="mb-4">
@@ -61,8 +130,19 @@ export function CopilotScreen() {
         </View>
       </ScrollView>
 
-      {/* Voice Listening Bar */}
-      <VoiceListeningBar isListening={isListening} onPress={handleVoicePress} />
+      {/* Voice Control Bar */}
+      <VoiceControlBar
+        isConnected={isConnected}
+        isConnecting={isConnecting}
+        isListening={isListening}
+        isProcessing={isProcessing}
+        isSpeaking={isSpeaking}
+        currentTranscript={currentTranscript}
+        onConnect={handleConnect}
+        onDisconnect={handleDisconnect}
+        onStartListening={handleStartListening}
+        onStopListening={handleStopListening}
+      />
     </SafeAreaView>
   );
 }

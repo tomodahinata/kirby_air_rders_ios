@@ -1,27 +1,103 @@
-import { useCallback } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { useCallback, useMemo } from 'react';
+import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RefreshCw, Database } from 'lucide-react-native';
+import { Upload, BookOpen, MapPin, Star, Calendar, CheckCircle2, Clock } from 'lucide-react-native';
 
-import {
-  useExtractData,
-  useExtractionStatus,
-  useContextData,
-  DataCollectionCard,
-  ExtractionProgress,
-} from '@/features/extraction';
 import {
   useCarSync,
   useConnectionStatus,
   ConnectionStatusCard,
   SyncButton,
+  type SyncableData,
 } from '@/features/connection';
+import {
+  useJournalStore,
+  selectUnsyncedEntries,
+  selectSyncedCount,
+} from '@/features/journal/store/journalStore';
+import type { ManualJournalEntry } from '@/features/journal/types';
+
+/**
+ * 日時フォーマット関数
+ */
+function formatDate(isoString: string): string {
+  const date = new Date(isoString);
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${month}/${day}`;
+}
+
+/**
+ * ジャーナルエントリーカード
+ */
+function JournalEntryItem({ entry, isSynced }: { entry: ManualJournalEntry; isSynced?: boolean }) {
+  return (
+    <View className={`rounded-xl p-3 mb-2 ${isSynced ? 'bg-gray-700/50' : 'bg-surface-light'}`}>
+      <View className="flex-row items-center justify-between mb-1">
+        <View className="flex-row items-center flex-1 mr-2">
+          {isSynced && <CheckCircle2 size={14} color="#22c55e" className="mr-1" />}
+          <Text
+            className={`text-base font-semibold flex-1 ${isSynced ? 'text-gray-400' : 'text-white'}`}
+            numberOfLines={1}
+          >
+            {entry.place_name}
+          </Text>
+        </View>
+        <View className="flex-row items-center">
+          <Star
+            size={14}
+            color={isSynced ? '#6b7280' : '#f59e0b'}
+            fill={isSynced ? '#6b7280' : '#f59e0b'}
+          />
+          <Text className={`text-sm ml-1 ${isSynced ? 'text-gray-500' : 'text-amber-400'}`}>
+            {entry.rating}
+          </Text>
+        </View>
+      </View>
+      <View className="flex-row items-center">
+        <MapPin size={12} color="#9ca3af" />
+        <Text className="text-xs text-gray-400 ml-1 flex-1" numberOfLines={1}>
+          {entry.address.prefecture} {entry.address.city}
+        </Text>
+        <Text className="text-xs text-gray-500 ml-2">{formatDate(entry.visited_at)}</Text>
+      </View>
+      {entry.notes && (
+        <Text className="text-xs text-gray-400 mt-1" numberOfLines={2}>
+          {entry.notes}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+/**
+ * 同期データペイロードの型
+ */
+interface SyncPayload {
+  type: 'journal_entries';
+  syncedAt: string;
+  entries: Array<{
+    id: string;
+    place_name: string;
+    address: ManualJournalEntry['address'];
+    visited_at: string;
+    rating: number;
+    notes?: string;
+    location?: ManualJournalEntry['location'];
+  }>;
+  metadata: {
+    totalEntries: number;
+    appVersion: string;
+  };
+}
 
 export default function SyncScreen() {
-  // Extraction
-  const extractMutation = useExtractData();
-  const { status: extractionStatus, progress } = useExtractionStatus();
-  const contextData = useContextData();
+  // Journal - 未同期と同期済みを分けて取得
+  const unsyncedEntries = useJournalStore(selectUnsyncedEntries);
+  const syncedCount = useJournalStore(selectSyncedCount);
+  const totalEntries = useJournalStore((state) => state.entries.length);
+  const markEntriesAsSynced = useJournalStore((state) => state.markEntriesAsSynced);
+  const lastSyncedAt = useJournalStore((state) => state.lastSyncedAt);
 
   // Connection
   const syncMutation = useCarSync();
@@ -32,20 +108,54 @@ export default function SyncScreen() {
     error: connectionError,
   } = useConnectionStatus();
 
-  const isExtracting =
-    extractionStatus !== 'idle' && extractionStatus !== 'complete' && extractionStatus !== 'error';
+  // 未同期エントリーのIDリスト
+  const unsyncedEntryIds = useMemo(
+    () => unsyncedEntries.map((entry) => entry.id),
+    [unsyncedEntries]
+  );
 
-  const isExtractionComplete = extractionStatus === 'complete' && !!contextData;
+  // 同期するデータを準備（未同期のみ）
+  const syncData: SyncPayload = useMemo(
+    () => ({
+      type: 'journal_entries',
+      syncedAt: new Date().toISOString(),
+      entries: unsyncedEntries.map((entry) => ({
+        id: entry.id,
+        place_name: entry.place_name,
+        address: entry.address,
+        visited_at: entry.visited_at,
+        rating: entry.rating,
+        notes: entry.notes,
+        location: entry.location,
+      })),
+      metadata: {
+        totalEntries: unsyncedEntries.length,
+        appVersion: '1.0.0',
+      },
+    }),
+    [unsyncedEntries]
+  );
 
-  const handleStartExtraction = useCallback(() => {
-    extractMutation.mutate();
-  }, [extractMutation]);
+  const hasUnsyncedEntries = unsyncedEntries.length > 0;
 
   const handleSync = useCallback(() => {
-    if (contextData) {
-      syncMutation.mutate(contextData);
+    if (hasUnsyncedEntries) {
+      // 型安全な構造を持つ syncData を SyncableData として送信
+      syncMutation.mutate(syncData as unknown as SyncableData, {
+        onSuccess: () => {
+          // 送信したエントリーを同期済みにマーク
+          markEntriesAsSynced(unsyncedEntryIds);
+        },
+      });
     }
-  }, [contextData, syncMutation]);
+  }, [syncData, syncMutation, hasUnsyncedEntries, markEntriesAsSynced, unsyncedEntryIds]);
+
+  // 最終同期日時のフォーマット
+  const lastSyncedDisplay = useMemo(() => {
+    if (!lastSyncedAt) return null;
+    const date = new Date(lastSyncedAt);
+    return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+  }, [lastSyncedAt]);
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-gray-900">
@@ -59,67 +169,122 @@ export default function SyncScreen() {
           <View className="flex-row items-center justify-between">
             <View>
               <Text className="text-3xl font-bold text-white">データ同期</Text>
-              <Text className="text-base text-gray-400 mt-1">パーソナルデータを車載器に送信</Text>
+              <Text className="text-base text-gray-400 mt-1">ジャーナルを車載器にアップロード</Text>
             </View>
             <View className="bg-blue-600/20 p-3 rounded-full">
-              <Database size={28} color="#60a5fa" />
+              <Upload size={28} color="#60a5fa" />
             </View>
           </View>
         </View>
 
-        {/* データ収集セクション */}
-        <View className="px-5 mb-6">
-          <Text className="text-lg font-semibold text-white mb-3">Step 1: データ収集</Text>
-
-          {/* 収集開始ボタン */}
-          {extractionStatus === 'idle' && (
-            <Pressable
-              onPress={handleStartExtraction}
-              className="bg-blue-600 active:bg-blue-700 rounded-2xl p-5 mb-4"
-              style={{
-                shadowColor: '#3b82f6',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 8,
-              }}
-            >
-              <View className="flex-row items-center justify-center">
-                <RefreshCw size={24} color="#ffffff" />
-                <Text className="text-lg font-bold text-white ml-3">データ収集を開始</Text>
+        {/* 同期状態サマリー */}
+        <View className="px-5 mb-4">
+          <View className="flex-row gap-3">
+            {/* 未送信 */}
+            <View className="flex-1 bg-amber-900/30 rounded-xl p-4">
+              <View className="flex-row items-center mb-2">
+                <Clock size={16} color="#f59e0b" />
+                <Text className="text-sm text-amber-400 ml-1 font-medium">未送信</Text>
               </View>
-              <Text className="text-sm text-blue-200 text-center mt-2">
-                ヘルスケア・検索・購買・カレンダーデータを収集します
-              </Text>
-            </Pressable>
-          )}
+              <Text className="text-3xl font-bold text-amber-400">{unsyncedEntries.length}</Text>
+              <Text className="text-xs text-amber-400/70">件</Text>
+            </View>
 
-          {/* 進捗表示 */}
-          {isExtracting && (
-            <View className="mb-4">
-              <ExtractionProgress progress={progress} isExtracting={isExtracting} />
+            {/* 送信済み */}
+            <View className="flex-1 bg-green-900/30 rounded-xl p-4">
+              <View className="flex-row items-center mb-2">
+                <CheckCircle2 size={16} color="#22c55e" />
+                <Text className="text-sm text-green-400 ml-1 font-medium">送信済み</Text>
+              </View>
+              <Text className="text-3xl font-bold text-green-400">{syncedCount}</Text>
+              <Text className="text-xs text-green-400/70">件</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 未送信ジャーナルデータセクション */}
+        <View className="px-5 mb-6">
+          <View className="flex-row items-center mb-3">
+            <BookOpen size={20} color="#f59e0b" />
+            <Text className="text-lg font-semibold text-white ml-2">未送信の記録</Text>
+            {hasUnsyncedEntries && (
+              <View className="bg-amber-600/30 px-2 py-0.5 rounded-full ml-2">
+                <Text className="text-sm text-amber-400">{unsyncedEntries.length}件</Text>
+              </View>
+            )}
+          </View>
+
+          {hasUnsyncedEntries ? (
+            <View className="bg-surface-base rounded-2xl p-4">
+              {/* 統計 */}
+              <View className="flex-row mb-4">
+                <View className="flex-1 items-center">
+                  <Text className="text-2xl font-bold text-white">{unsyncedEntries.length}</Text>
+                  <Text className="text-xs text-gray-400">未送信数</Text>
+                </View>
+                <View className="flex-1 items-center">
+                  <Text className="text-2xl font-bold text-amber-400">
+                    {unsyncedEntries.length > 0
+                      ? (
+                          unsyncedEntries.reduce((sum, e) => sum + e.rating, 0) /
+                          unsyncedEntries.length
+                        ).toFixed(1)
+                      : '-'}
+                  </Text>
+                  <Text className="text-xs text-gray-400">平均評価</Text>
+                </View>
+                <View className="flex-1 items-center">
+                  <Text className="text-2xl font-bold text-green-400">
+                    {new Set(unsyncedEntries.map((e) => e.address.prefecture)).size}
+                  </Text>
+                  <Text className="text-xs text-gray-400">訪問地域</Text>
+                </View>
+              </View>
+
+              {/* 未送信エントリー一覧（最大5件） */}
+              <Text className="text-sm font-medium text-gray-400 mb-2">送信予定の記録</Text>
+              {unsyncedEntries.slice(0, 5).map((entry) => (
+                <JournalEntryItem key={entry.id} entry={entry} />
+              ))}
+
+              {unsyncedEntries.length > 5 && (
+                <Text className="text-xs text-gray-500 text-center mt-2">
+                  他 {unsyncedEntries.length - 5} 件の未送信記録
+                </Text>
+              )}
+            </View>
+          ) : totalEntries > 0 ? (
+            <View className="bg-green-900/20 rounded-2xl p-6 items-center">
+              <CheckCircle2 size={48} color="#22c55e" />
+              <Text className="text-green-400 mt-4 text-center font-semibold">
+                すべての記録が送信済みです
+              </Text>
+              <Text className="text-gray-500 text-sm mt-1 text-center">
+                合計 {syncedCount} 件の記録が車載器に送信されています
+              </Text>
+            </View>
+          ) : (
+            <View className="bg-surface-base rounded-2xl p-8 items-center">
+              <BookOpen size={48} color="#4b5563" />
+              <Text className="text-gray-400 mt-4 text-center">ジャーナル記録がありません</Text>
+              <Text className="text-gray-500 text-sm mt-1 text-center">
+                「ジャーナル」タブで訪問した場所を記録してください
+              </Text>
             </View>
           )}
 
-          {/* 収集データサマリー */}
-          <DataCollectionCard contextData={contextData} isComplete={isExtractionComplete} />
-
-          {/* 再収集ボタン */}
-          {isExtractionComplete && (
-            <Pressable
-              onPress={handleStartExtraction}
-              className="mt-3 p-3 bg-gray-800 rounded-xl flex-row items-center justify-center"
-              disabled={extractMutation.isPending}
-            >
-              <RefreshCw size={18} color="#9ca3af" />
-              <Text className="text-gray-400 ml-2">データを再収集</Text>
-            </Pressable>
+          {/* 最終同期日時 */}
+          {lastSyncedDisplay && (
+            <View className="flex-row items-center justify-center mt-3">
+              <Calendar size={14} color="#6b7280" />
+              <Text className="text-sm text-gray-500 ml-1">最終同期: {lastSyncedDisplay}</Text>
+            </View>
           )}
         </View>
 
         {/* 接続・転送セクション */}
         <View className="px-5 mb-6">
-          <Text className="text-lg font-semibold text-white mb-3">Step 2: 車載器へ送信</Text>
+          <Text className="text-lg font-semibold text-white mb-3">車載器へ送信</Text>
 
           <ConnectionStatusCard
             status={connectionStatus}
@@ -133,53 +298,23 @@ export default function SyncScreen() {
         <View className="px-5">
           <SyncButton
             status={connectionStatus}
-            isExtractionComplete={isExtractionComplete}
+            isExtractionComplete={hasUnsyncedEntries}
             onPress={handleSync}
-            disabled={syncMutation.isPending || !isExtractionComplete}
+            disabled={syncMutation.isPending || !hasUnsyncedEntries}
           />
 
-          {!isExtractionComplete && (
+          {!hasUnsyncedEntries && totalEntries > 0 && (
+            <Text className="text-sm text-green-500 text-center mt-3">
+              すべてのジャーナルが送信済みです
+            </Text>
+          )}
+
+          {totalEntries === 0 && (
             <Text className="text-sm text-gray-500 text-center mt-3">
-              データ収集を完了してから送信してください
+              ジャーナルに記録を追加してから送信してください
             </Text>
           )}
         </View>
-
-        {/* デバッグ情報（開発用） */}
-        {contextData && (
-          <View className="px-5 mt-8">
-            <Text className="text-sm text-gray-500 mb-2">デバッグ: LLMコンテキスト</Text>
-            <View className="bg-gray-800 p-4 rounded-xl">
-              <Text className="text-xs text-gray-400 font-mono">
-                version: {contextData.version}
-              </Text>
-              <Text className="text-xs text-gray-400 font-mono">
-                user: {contextData.user.name} ({contextData.user.age}歳)
-              </Text>
-              <Text className="text-xs text-gray-400 font-mono">
-                health: {contextData.extraction.health.currentCondition}
-              </Text>
-              <Text className="text-xs text-gray-400 font-mono">
-                stress: {contextData.extraction.health.stressLevel}
-              </Text>
-              <Text className="text-xs text-gray-400 font-mono">
-                interests: {contextData.extraction.behavior.primaryInterests.slice(0, 3).join(', ')}
-              </Text>
-              <Text className="text-xs text-gray-400 font-mono">
-                hints: {contextData.llmHints.suggestedCategories.join(', ')}
-              </Text>
-              <Text className="text-xs text-gray-400 font-mono">
-                journal: {contextData.journalEntries?.length ?? 0}件
-              </Text>
-              <Text className="text-xs text-gray-400 font-mono mt-2">
-                size: {new TextEncoder().encode(JSON.stringify(contextData)).length} bytes
-              </Text>
-              <Text className="text-xs text-gray-400 font-mono">
-                processing: {contextData.metadata.processingTimeMs}ms
-              </Text>
-            </View>
-          </View>
-        )}
       </ScrollView>
     </SafeAreaView>
   );

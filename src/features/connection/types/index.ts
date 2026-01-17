@@ -15,4 +15,5 @@ export {
   type ConnectionState,
   type SyncRequest,
   type ConnectionEvent,
+  type SyncableData,
 } from './connection';

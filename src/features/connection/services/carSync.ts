@@ -1,10 +1,10 @@
-import type { StructuredContext } from '@/features/extraction/types';
 import type {
   ConnectionStatus,
   TransferProgress,
   SyncResult,
   VehicleInfo,
   ConnectionEvent,
+  SyncableData,
 } from '../types';
 
 /**
@@ -84,7 +84,7 @@ export async function simulateConnection(
  * データ転送をシミュレート
  */
 export async function syncToCar(
-  data: StructuredContext,
+  data: SyncableData,
   onProgress?: (progress: TransferProgress) => void
 ): Promise<SyncResult> {
   const startTime = Date.now();
@@ -215,7 +215,7 @@ export function getAvailableConnectionTypes(): Array<'usb_c' | 'bluetooth'> {
  * フルシンクフロー（接続→転送→切断）
  */
 export async function performFullSync(
-  data: StructuredContext,
+  data: SyncableData,
   callbacks?: {
     onConnectionStatus?: (status: ConnectionStatus) => void;
     onTransferProgress?: (progress: TransferProgress) => void;

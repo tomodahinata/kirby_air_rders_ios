@@ -1,10 +1,5 @@
 // Components
-export { SuggestionScreen } from './components/SuggestionScreen';
-export { SuggestionCard } from './components/SuggestionCard';
-export { SuggestionList } from './components/SuggestionList';
-export { ScoreBadge } from './components/ScoreBadge';
-export { CategoryBadge } from './components/CategoryBadge';
-export { ReasonCard } from './components/ReasonCard';
+export { AISuggestionCard } from './components/AISuggestionCard';
 
 // API hooks
 export {

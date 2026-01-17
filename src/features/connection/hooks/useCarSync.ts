@@ -1,14 +1,13 @@
 import { useMutation } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
-import type { StructuredContext } from '@/features/extraction/types';
-
 import { performFullSync } from '../services/carSync';
 import { useConnectionStore } from '../store/connectionStore';
-import type { SyncResult } from '../types';
+import type { SyncResult, SyncableData } from '../types';
 
 /**
  * 車載同期Mutation Hook
+ * 任意のJSONシリアライズ可能なデータを車載器に送信
  */
 export function useCarSync() {
   const {
@@ -21,9 +20,9 @@ export function useCarSync() {
     disconnect,
   } = useConnectionStore();
 
-  return useMutation<SyncResult, Error, StructuredContext>({
-    mutationFn: async (contextData: StructuredContext) => {
-      return performFullSync(contextData, {
+  return useMutation<SyncResult, Error, SyncableData>({
+    mutationFn: async (data: SyncableData) => {
+      return performFullSync(data, {
         onConnectionStatus: (status) => {
           if (status === 'connecting') {
             startConnecting();
