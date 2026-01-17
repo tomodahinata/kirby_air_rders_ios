@@ -51,7 +51,7 @@ function ConnectionStatusCardComponent({
         useNativeDriver: false,
       }).start();
     }
-  }, [transferProgress?.progress, progressAnim]);
+  }, [transferProgress, progressAnim]);
 
   const getStatusConfig = () => {
     switch (status) {

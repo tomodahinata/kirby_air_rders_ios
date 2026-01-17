@@ -120,3 +120,9 @@ export const connectionEventSchema = z.object({
 });
 
 export type ConnectionEvent = z.infer<typeof connectionEventSchema>;
+
+/**
+ * 同期可能なデータ型
+ * JSONシリアライズ可能な任意のデータ構造
+ */
+export type SyncableData = Record<string, unknown> | unknown[];

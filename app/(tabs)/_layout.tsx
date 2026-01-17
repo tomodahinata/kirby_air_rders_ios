@@ -25,7 +25,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'おすすめ',
+          title: 'ホーム',
           tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />,
         }}
       />

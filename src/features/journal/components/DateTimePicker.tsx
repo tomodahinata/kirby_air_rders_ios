@@ -1,7 +1,7 @@
-import { memo, useCallback, useState } from 'react';
-import { View, Text, Pressable, Platform, Modal, SafeAreaView } from 'react-native';
 import DateTimePickerRN from '@react-native-community/datetimepicker';
-import { Calendar, Clock, Check, X } from 'lucide-react-native';
+import { Calendar, Check, Clock, X } from 'lucide-react-native';
+import { memo, useCallback, useState } from 'react';
+import { Modal, Platform, Pressable, SafeAreaView, Text, View } from 'react-native';
 
 interface DateTimePickerProps {
   value: Date;

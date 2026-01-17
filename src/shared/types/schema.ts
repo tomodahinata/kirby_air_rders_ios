@@ -36,6 +36,8 @@ export const manualJournalEntrySchema = z.object({
   notes: z.string().max(500).optional(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
+  /** 車載器への同期日時（nullの場合は未送信） */
+  synced_at: z.string().datetime().nullable().optional(),
 });
 
 export type ManualJournalEntry = z.infer<typeof manualJournalEntrySchema>;

@@ -44,8 +44,15 @@ interface JournalState {
   getFilteredEntries: (filter?: JournalFilter, sort?: JournalSortOption) => ManualJournalEntry[];
 
   // 同期関連
+  /** @deprecated Use markEntriesAsSynced instead */
   markAsSynced: () => void;
   setPendingSync: (pending: boolean) => void;
+  /** 指定したエントリーを同期済みにマーク */
+  markEntriesAsSynced: (entryIds: string[]) => void;
+  /** 未同期のエントリーを取得 */
+  getUnsyncedEntries: () => ManualJournalEntry[];
+  /** 未同期エントリー数を取得 */
+  getUnsyncedCount: () => number;
 
   // エラーハンドリング
   setError: (error: string | null) => void;
@@ -202,7 +209,7 @@ export const useJournalStore = create<JournalState>()(
           return sortEntries(filtered, sort);
         },
 
-        // 同期完了マーク
+        // 同期完了マーク（後方互換性のため維持）
         markAsSynced: () => {
           set({
             lastSyncedAt: new Date().toISOString(),
@@ -213,6 +220,30 @@ export const useJournalStore = create<JournalState>()(
         // 同期待ち設定
         setPendingSync: (pending: boolean) => {
           set({ pendingSync: pending });
+        },
+
+        // 指定したエントリーを同期済みにマーク
+        markEntriesAsSynced: (entryIds: string[]) => {
+          const now = new Date().toISOString();
+          set((state) => ({
+            entries: state.entries.map((entry) =>
+              entryIds.includes(entry.id) ? { ...entry, synced_at: now, updated_at: now } : entry
+            ),
+            lastSyncedAt: now,
+            pendingSync: state.entries.some(
+              (entry) => !entryIds.includes(entry.id) && !entry.synced_at
+            ),
+          }));
+        },
+
+        // 未同期のエントリーを取得
+        getUnsyncedEntries: () => {
+          return get().entries.filter((entry) => !entry.synced_at);
+        },
+
+        // 未同期エントリー数を取得
+        getUnsyncedCount: () => {
+          return get().entries.filter((entry) => !entry.synced_at).length;
         },
 
         // エラー設定
@@ -258,3 +289,19 @@ export const selectIsLoading = (state: JournalState) => state.isLoading;
 export const selectError = (state: JournalState) => state.error;
 export const selectPendingSync = (state: JournalState) => state.pendingSync;
 export const selectLastSyncedAt = (state: JournalState) => state.lastSyncedAt;
+
+/** 未同期エントリーを取得 */
+export const selectUnsyncedEntries = (state: JournalState) =>
+  state.entries.filter((entry) => !entry.synced_at);
+
+/** 同期済みエントリーを取得 */
+export const selectSyncedEntries = (state: JournalState) =>
+  state.entries.filter((entry) => entry.synced_at);
+
+/** 未同期エントリー数を取得 */
+export const selectUnsyncedCount = (state: JournalState) =>
+  state.entries.filter((entry) => !entry.synced_at).length;
+
+/** 同期済みエントリー数を取得 */
+export const selectSyncedCount = (state: JournalState) =>
+  state.entries.filter((entry) => entry.synced_at).length;

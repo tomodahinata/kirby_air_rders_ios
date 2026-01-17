@@ -20,7 +20,9 @@
         "NSHealthShareUsageDescription": "あなたのヘルスケアデータ（心拍数、歩数、睡眠）を分析し、最適な目的地を提案するために使用します。",
         "NSHealthUpdateUsageDescription": "ヘルスケアデータの更新は行いません。",
         "NSCalendarsUsageDescription": "カレンダーの予定を確認し、目的地の提案に活用します。",
-        "NSCalendarsFullAccessUsageDescription": "カレンダーの予定を確認し、目的地の提案に活用します。"
+        "NSCalendarsFullAccessUsageDescription": "カレンダーの予定を確認し、目的地の提案に活用します。",
+        "NSLocationWhenInUseUsageDescription": "あなたの現在地を取得し、最適なナビゲーションルートの提案に使用します。",
+        "NSMicrophoneUsageDescription": "音声入力による会話機能を使用するためにマイクへのアクセスが必要です。"
       },
       "entitlements": {
         "com.apple.developer.healthkit": true,
@@ -33,7 +35,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "RECORD_AUDIO"]
     },
     "web": {
       "bundler": "metro",
@@ -46,6 +49,12 @@
         "expo-calendar",
         {
           "calendarPermission": "カレンダーの予定を確認し、目的地の提案に活用します。"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "あなたの現在地を取得し、最適なナビゲーションルートの提案に使用します。"
         }
       ],
       "@react-native-community/datetimepicker"
