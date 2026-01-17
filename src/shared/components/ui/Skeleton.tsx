@@ -41,12 +41,14 @@ function SkeletonComponent({
 
   return (
     <Animated.View
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading"
       style={[
         {
           width,
           height,
           borderRadius,
-          backgroundColor: '#475569',
+          backgroundColor: '#334155', // slate-700 for dark mode
         },
         { opacity },
       ]}
@@ -64,7 +66,11 @@ interface SkeletonCardProps {
 
 function SuggestionSkeletonComponent({ className = '' }: SkeletonCardProps) {
   return (
-    <View className={`bg-surface rounded-2xl p-4 border border-gray-700 ${className}`}>
+    <View
+      accessibilityRole="progressbar"
+      accessibilityLabel="Loading suggestion"
+      className={`bg-surface-elevated rounded-2xl p-4 border border-slate-700 ${className}`}
+    >
       {/* Score badge */}
       <View className="flex-row justify-between items-start mb-3">
         <Skeleton width={60} height={28} borderRadius={14} />
@@ -90,3 +96,23 @@ function SuggestionSkeletonComponent({ className = '' }: SkeletonCardProps) {
 }
 
 export const SuggestionSkeleton = memo(SuggestionSkeletonComponent);
+
+// AI Thinking indicator skeleton
+function AIThinkingSkeletonComponent({ className = '' }: SkeletonCardProps) {
+  return (
+    <View
+      accessibilityRole="progressbar"
+      accessibilityLabel="AI is thinking"
+      className={`flex-row items-center gap-2 p-4 ${className}`}
+    >
+      <View className="flex-row gap-1">
+        <Skeleton width={8} height={8} borderRadius={4} />
+        <Skeleton width={8} height={8} borderRadius={4} />
+        <Skeleton width={8} height={8} borderRadius={4} />
+      </View>
+      <Skeleton width={120} height={16} borderRadius={8} />
+    </View>
+  );
+}
+
+export const AIThinkingSkeleton = memo(AIThinkingSkeletonComponent);

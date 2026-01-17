@@ -10,26 +10,38 @@ interface ConnectionBadgeProps {
 function ConnectionBadgeComponent({ isConnected, isConnecting }: ConnectionBadgeProps) {
   if (isConnecting) {
     return (
-      <View className="flex-row items-center bg-yellow-100 px-3 py-1 rounded-full">
-        <Wifi size={14} color="#ca8a04" />
-        <Text className="text-xs text-yellow-700 ml-1">接続中...</Text>
+      <View
+        accessible
+        accessibilityLabel="接続中"
+        className="flex-row items-center bg-amber-900/30 px-3 py-1.5 rounded-full min-h-[32px]"
+      >
+        <Wifi size={14} color="#f59e0b" />
+        <Text className="text-car-sm text-warning ml-1.5">接続中...</Text>
       </View>
     );
   }
 
   if (isConnected) {
     return (
-      <View className="flex-row items-center bg-green-100 px-3 py-1 rounded-full">
-        <Wifi size={14} color="#16a34a" />
-        <Text className="text-xs text-green-700 ml-1">接続済み</Text>
+      <View
+        accessible
+        accessibilityLabel="接続済み"
+        className="flex-row items-center bg-green-900/30 px-3 py-1.5 rounded-full min-h-[32px]"
+      >
+        <Wifi size={14} color="#22c55e" />
+        <Text className="text-car-sm text-success ml-1.5">接続済み</Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-row items-center bg-gray-100 px-3 py-1 rounded-full">
-      <WifiOff size={14} color="#6b7280" />
-      <Text className="text-xs text-gray-500 ml-1">未接続</Text>
+    <View
+      accessible
+      accessibilityLabel="未接続"
+      className="flex-row items-center bg-surface-overlay px-3 py-1.5 rounded-full min-h-[32px]"
+    >
+      <WifiOff size={14} color="#64748b" />
+      <Text className="text-car-sm text-text-muted ml-1.5">未接続</Text>
     </View>
   );
 }
