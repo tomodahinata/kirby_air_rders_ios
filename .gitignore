@@ -1,41 +1,167 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
+# ===========================
+# Dependencies
+# ===========================
 node_modules/
+.pnp/
+.pnp.js
 
-# Expo
+# ===========================
+# Expo / React Native
+# ===========================
 .expo/
 dist/
 web-build/
 expo-env.d.ts
 
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
+# EAS Build
+.eas/
+eas-build-local.json
 
-# Metro
+# Generated native folders (managed workflow)
+/ios/
+/android/
+
+# Metro bundler
 .metro-health-check*
 
-# debug
+# Native build artifacts
+*.orig.*
+.kotlin/
+
+# ===========================
+# Environment & Secrets (SECURITY CRITICAL)
+# ===========================
+# All environment files
+.env
+.env.*
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+
+# API keys and credentials
+*.pem
+*.key
+*.p8
+*.p12
+*.jks
+*.mobileprovision
+*.keystore
+credentials.json
+google-services.json
+GoogleService-Info.plist
+firebase-config.js
+firebase-config.json
+
+# Expo secrets
+eas-credentials/
+secrets/
+.secrets/
+
+# ===========================
+# IDE / Editor
+# ===========================
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains IDEs (WebStorm, IntelliJ)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim
+*.swp
+*.swo
+*~
+
+# ===========================
+# OS Generated Files
+# ===========================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ===========================
+# Logs & Debug
+# ===========================
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+lerna-debug.log*
+*.log
+logs/
 
-# macOS
-.DS_Store
-*.pem
+# ===========================
+# Testing & Coverage
+# ===========================
+coverage/
+.nyc_output/
+*.lcov
+jest-results/
 
-# local env files
-.env*.local
-
-# typescript
+# ===========================
+# Build & Cache
+# ===========================
+build/
+.cache/
 *.tsbuildinfo
+.eslintcache
+.prettiercache
 
-# generated native folders
-/ios
-/android
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# ===========================
+# Package manager locks (optional - uncomment if needed)
+# ===========================
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# ===========================
+# Misc
+# ===========================
+# Sentry
+.sentryclirc
+
+# Storybook
+storybook-static/
+
+# Local database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Backup files
+*.bak
+*.backup

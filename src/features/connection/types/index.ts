@@ -1,0 +1,18 @@
+export {
+  connectionStatusSchema,
+  connectionTypeSchema,
+  vehicleInfoSchema,
+  transferProgressSchema,
+  syncResultSchema,
+  connectionStateSchema,
+  syncRequestSchema,
+  connectionEventSchema,
+  type ConnectionStatus,
+  type ConnectionType,
+  type VehicleInfo,
+  type TransferProgress,
+  type SyncResult,
+  type ConnectionState,
+  type SyncRequest,
+  type ConnectionEvent,
+} from './connection';
