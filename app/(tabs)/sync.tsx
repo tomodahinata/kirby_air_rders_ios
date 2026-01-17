@@ -10,11 +10,7 @@ import {
   SyncButton,
   type SyncableData,
 } from '@/features/connection';
-import {
-  useJournalStore,
-  selectUnsyncedEntries,
-  selectSyncedCount,
-} from '@/features/journal/store/journalStore';
+import { useJournalStore } from '@/features/journal/store/journalStore';
 import type { ManualJournalEntry } from '@/features/journal/types';
 
 /**
@@ -98,12 +94,15 @@ interface SyncPayload {
 }
 
 export default function SyncScreen() {
-  // Journal - 未同期と同期済みを分けて取得
-  const unsyncedEntries = useJournalStore(selectUnsyncedEntries);
-  const syncedCount = useJournalStore(selectSyncedCount);
-  const totalEntries = useJournalStore((state) => state.entries.length);
+  // Journal - ストアから安定した参照で取得
+  const entries = useJournalStore((state) => state.entries);
   const markEntriesAsSynced = useJournalStore((state) => state.markEntriesAsSynced);
   const lastSyncedAt = useJournalStore((state) => state.lastSyncedAt);
+
+  // useMemoで派生データを計算（無限ループを回避）
+  const unsyncedEntries = useMemo(() => entries.filter((entry) => !entry.synced_at), [entries]);
+  const syncedCount = useMemo(() => entries.filter((entry) => entry.synced_at).length, [entries]);
+  const totalEntries = entries.length;
 
   // Connection
   const syncMutation = useCarSync();
