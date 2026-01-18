@@ -1,7 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { loggers } from '@/shared/lib/logger';
 import type { GetSuggestionsRequest, Suggestion } from '@/features/suggestion/types/suggestion';
 import { fetchSuggestions, fetchSuggestionById } from '@/mocks/handlers/suggestionHandler';
+
+const log = loggers.suggestion;
 
 // Query keys for cache management
 export const suggestionKeys = {
@@ -75,8 +78,7 @@ export function useRefreshSuggestions() {
 export function useSelectSuggestion() {
   return useMutation({
     mutationFn: async (suggestion: Suggestion) => {
-      // In a real app, this would start navigation or log the selection
-      console.log('Selected suggestion:', suggestion.destination);
+      log.debug('Selected suggestion:', suggestion.destination);
       return suggestion;
     },
   });

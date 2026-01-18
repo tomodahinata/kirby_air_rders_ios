@@ -6,6 +6,9 @@ import {
   type WebSocketCallbacks,
   type WebSocketConfig,
 } from '../types';
+import { loggers } from '@/shared/lib/logger';
+
+const log = loggers.websocket;
 
 /**
  * デフォルトのWebSocket設定
@@ -75,19 +78,19 @@ export class VoiceWebSocketService {
   connect(): Promise<void> {
     // 既に接続済みの場合はスキップ
     if (this.isSocketOpen && this.socket) {
-      console.log('[VoiceWS] Already connected, skipping');
+      log.debug('Already connected, skipping');
       return Promise.resolve();
     }
 
     // 接続試行中の場合は既存のPromiseを返す
     if (this.isConnecting && this.connectPromise) {
-      console.log('[VoiceWS] Connection already in progress, returning existing promise');
+      log.debug('Connection already in progress, returning existing promise');
       return this.connectPromise;
     }
 
     // 既存のソケットがある場合はクリーンアップ
     if (this.socket) {
-      console.log('[VoiceWS] Cleaning up existing socket before new connection');
+      log.debug('Cleaning up existing socket before new connection');
       try {
         this.socket.onopen = null;
         this.socket.onclose = null;
@@ -116,9 +119,9 @@ export class VoiceWebSocketService {
       };
 
       try {
-        console.log('[VoiceWS] ====== CONNECTION START ======');
-        console.log('[VoiceWS] URL:', this.config.url);
-        console.log('[VoiceWS] Config:', {
+        log.debug('====== CONNECTION START ======');
+        log.debug('URL:', this.config.url);
+        log.debug('Config:', {
           reconnectAttempts: this.config.reconnectAttempts,
           reconnectInterval: this.config.reconnectInterval,
           pingInterval: this.config.pingInterval,
@@ -132,10 +135,10 @@ export class VoiceWebSocketService {
           this.isSocketOpen = true;
           this.isConnecting = false;
 
-          console.log('[VoiceWS] ====== CONNECTED ======');
-          console.log('[VoiceWS] Connected at:', this.stats.connectedAt.toISOString());
-          console.log('[VoiceWS] ReadyState:', this.getReadyStateString());
-          console.log('[VoiceWS] isSocketOpen:', this.isSocketOpen);
+          log.debug('====== CONNECTED ======');
+          log.debug('Connected at:', this.stats.connectedAt.toISOString());
+          log.debug('ReadyState:', this.getReadyStateString());
+          log.debug('isSocketOpen:', this.isSocketOpen);
 
           this.reconnectAttempt = 0;
           this.startPingInterval();
@@ -152,10 +155,10 @@ export class VoiceWebSocketService {
           const duration = this.stats.connectedAt
             ? Math.round((Date.now() - this.stats.connectedAt.getTime()) / 1000)
             : 0;
-          console.log('[VoiceWS] ====== DISCONNECTED ======');
-          console.log('[VoiceWS] Code:', event.code, '| Reason:', event.reason || '(none)');
-          console.log('[VoiceWS] Session duration:', duration, 'seconds');
-          console.log('[VoiceWS] Stats:', {
+          log.debug('====== DISCONNECTED ======');
+          log.debug('Code:', event.code, '| Reason:', event.reason || '(none)');
+          log.debug('Session duration:', duration, 'seconds');
+          log.debug('Stats:', {
             messagesSent: this.stats.messagesSent,
             messagesReceived: this.stats.messagesReceived,
             binaryMessagesReceived: this.stats.binaryMessagesReceived,
@@ -174,9 +177,9 @@ export class VoiceWebSocketService {
           this.isSocketOpen = false;
           this.isConnecting = false;
           this.connectPromise = null;
-          console.error('[VoiceWS] ====== ERROR ======');
-          console.error('[VoiceWS] ReadyState:', this.getReadyStateString());
-          console.error('[VoiceWS] Event:', event);
+          log.error('====== ERROR ======');
+          log.error('ReadyState:', this.getReadyStateString());
+          log.error('Event:', event);
           const error = new WebSocketError('WebSocket connection error');
           this.callbacks.onError?.(error);
           reject(error);
@@ -188,8 +191,8 @@ export class VoiceWebSocketService {
       } catch (error) {
         this.isConnecting = false;
         this.connectPromise = null;
-        console.error('[VoiceWS] ====== CONNECTION FAILED ======');
-        console.error('[VoiceWS] Error:', error);
+        log.error('====== CONNECTION FAILED ======');
+        log.error('Error:', error);
         const wsError =
           error instanceof Error
             ? new WebSocketError(error.message)
@@ -227,12 +230,12 @@ export class VoiceWebSocketService {
     const duration = this.stats.connectedAt
       ? Math.round((Date.now() - this.stats.connectedAt.getTime()) / 1000)
       : 0;
-    console.log('[VoiceWS] ====== STATUS ======');
-    console.log('[VoiceWS] ReadyState:', this.getReadyStateString());
-    console.log('[VoiceWS] isSocketOpen:', this.isSocketOpen);
-    console.log('[VoiceWS] IsConnected:', this.isConnected());
-    console.log('[VoiceWS] Session duration:', duration, 'seconds');
-    console.log('[VoiceWS] Stats:', {
+    log.debug('====== STATUS ======');
+    log.debug('ReadyState:', this.getReadyStateString());
+    log.debug('isSocketOpen:', this.isSocketOpen);
+    log.debug('IsConnected:', this.isConnected());
+    log.debug('Session duration:', duration, 'seconds');
+    log.debug('Stats:', {
       messagesSent: this.stats.messagesSent,
       messagesReceived: this.stats.messagesReceived,
       binaryMessagesReceived: this.stats.binaryMessagesReceived,
@@ -266,7 +269,7 @@ export class VoiceWebSocketService {
       this.socket = null;
     }
 
-    console.log('[VoiceWS] Disconnected');
+    log.debug('Disconnected');
   }
 
   /**
@@ -276,8 +279,8 @@ export class VoiceWebSocketService {
    */
   async sendAudioData(audioData: string, _format: 'pcm' | 'wav' | 'opus' = 'wav'): Promise<void> {
     if (!this.socket || !this.isSocketOpen) {
-      console.warn('[VoiceWS] Cannot send audio: not connected');
-      console.warn('[VoiceWS] isSocketOpen:', this.isSocketOpen);
+      log.warn('Cannot send audio: not connected');
+      log.warn('isSocketOpen:', this.isSocketOpen);
       return;
     }
 
@@ -292,7 +295,7 @@ export class VoiceWebSocketService {
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        console.log(`[VoiceWS] Sending binary audio data: size=${dataSizeKB}KB`);
+        log.debug(`Sending binary audio data: size=${dataSizeKB}KB`);
 
         // バイナリデータを直接送信
         this.socket.send(binaryData);
@@ -301,8 +304,8 @@ export class VoiceWebSocketService {
         this.stats.messagesSent++;
         this.stats.bytesSent += binaryData.byteLength;
 
-        console.log(
-          `[VoiceWS] >>> SENT [BINARY AUDIO] ${binaryData.byteLength} bytes ` +
+        log.debug(
+          `>>> SENT [BINARY AUDIO] ${binaryData.byteLength} bytes ` +
             `(total: ${this.stats.messagesSent} msgs, ${Math.round(this.stats.bytesSent / 1024)}KB)`
         );
         return; // 成功したら終了
@@ -312,14 +315,14 @@ export class VoiceWebSocketService {
         if (isInvalidState && attempt < maxRetries - 1) {
           // INVALID_STATE_ERRの場合はリトライ
           if (attempt === 0) {
-            console.log('[VoiceWS] Socket not ready for audio send, waiting...');
+            log.debug('Socket not ready for audio send, waiting...');
           }
           await new Promise((r) => setTimeout(r, retryDelay));
           continue;
         }
 
         // 最後のリトライでも失敗、または別のエラー
-        console.error('[VoiceWS] Failed to send audio data after retries:', error);
+        log.error('Failed to send audio data after retries:', error);
         return;
       }
     }
@@ -342,7 +345,7 @@ export class VoiceWebSocketService {
    * バックエンドに音声データの送信が始まることを伝える
    */
   async sendStartAsr(): Promise<void> {
-    console.log('[VoiceWS] Sending start_asr command');
+    log.debug('Sending start_asr command');
     await this.sendMessage('start_asr', {});
   }
 
@@ -351,7 +354,7 @@ export class VoiceWebSocketService {
    * バックエンドに音声データの送信が終了したことを伝える
    */
   async sendStopAsr(): Promise<void> {
-    console.log('[VoiceWS] Sending stop_asr command');
+    log.debug('Sending stop_asr command');
     await this.sendMessage('stop_asr', {});
   }
 
@@ -396,8 +399,8 @@ export class VoiceWebSocketService {
       } | null;
     } | null
   ): Promise<void> {
-    console.log(
-      '[VoiceWS] Sending metadata:',
+    log.debug(
+      'Sending metadata:',
       location
         ? {
             lat: location.latitude,
@@ -433,8 +436,8 @@ export class VoiceWebSocketService {
    */
   private async sendMessage(type: MessageType, payload: ClientMessage['payload']): Promise<void> {
     if (!this.socket || !this.isSocketOpen) {
-      console.warn('[VoiceWS] Cannot send message: not connected');
-      console.warn('[VoiceWS] isSocketOpen:', this.isSocketOpen);
+      log.warn('Cannot send message: not connected');
+      log.warn('isSocketOpen:', this.isSocketOpen);
       return;
     }
 
@@ -461,8 +464,8 @@ export class VoiceWebSocketService {
 
         // pingメッセージ以外はログ出力
         if (type !== 'ping') {
-          console.log(
-            `[VoiceWS] >>> SENT [${type}] ${jsonStr.length} bytes (total: ${this.stats.messagesSent} msgs, ${Math.round(this.stats.bytesSent / 1024)}KB)`
+          log.debug(
+            `>>> SENT [${type}] ${jsonStr.length} bytes (total: ${this.stats.messagesSent} msgs, ${Math.round(this.stats.bytesSent / 1024)}KB)`
           );
         }
         return; // 成功したら終了
@@ -472,15 +475,15 @@ export class VoiceWebSocketService {
         if (isInvalidState && attempt < maxRetries - 1) {
           // INVALID_STATE_ERRの場合はリトライ
           if (attempt === 0) {
-            console.log(`[VoiceWS] Socket not ready for send, waiting... (type: ${type})`);
+            log.debug(`Socket not ready for send, waiting... (type: ${type})`);
           }
           await new Promise((r) => setTimeout(r, retryDelay));
           continue;
         }
 
         // 最後のリトライでも失敗、または別のエラー
-        console.error('[VoiceWS] Send error after retries:', error);
-        console.error('[VoiceWS] ReadyState:', this.getReadyStateString());
+        log.error('Send error after retries:', error);
+        log.error('ReadyState:', this.getReadyStateString());
         return;
       }
     }
@@ -497,8 +500,8 @@ export class VoiceWebSocketService {
       const byteSize = data instanceof ArrayBuffer ? data.byteLength : 0;
       this.stats.binaryMessagesReceived++;
       this.stats.bytesReceived += byteSize;
-      console.log(
-        `[VoiceWS] <<< RECV [BINARY] ${byteSize} bytes (total: ${this.stats.binaryMessagesReceived} binary msgs)`
+      log.debug(
+        `<<< RECV [BINARY] ${byteSize} bytes (total: ${this.stats.binaryMessagesReceived} binary msgs)`
       );
       this.handleBinaryAudio(data);
       return;
@@ -506,7 +509,7 @@ export class VoiceWebSocketService {
 
     // 文字列でない場合はスキップ
     if (typeof data !== 'string') {
-      console.warn('[VoiceWS] Unexpected data type:', typeof data);
+      log.warn('Unexpected data type:', typeof data);
       return;
     }
 
@@ -519,8 +522,8 @@ export class VoiceWebSocketService {
       const result = serverMessageSchema.safeParse(parsed);
 
       if (!result.success) {
-        console.warn('[VoiceWS] Invalid message format:', result.error);
-        console.warn('[VoiceWS] Raw data:', data.substring(0, 200));
+        log.warn('Invalid message format:', result.error);
+        log.warn('Raw data:', data.substring(0, 200));
         return;
       }
 
@@ -528,12 +531,12 @@ export class VoiceWebSocketService {
 
       // pong以外はログ出力
       if (message.type !== 'pong') {
-        console.log(
-          `[VoiceWS] <<< RECV [${message.type}] ${data.length} bytes (total: ${this.stats.messagesReceived} msgs, ${Math.round(this.stats.bytesReceived / 1024)}KB)`
+        log.debug(
+          `<<< RECV [${message.type}] ${data.length} bytes (total: ${this.stats.messagesReceived} msgs, ${Math.round(this.stats.bytesReceived / 1024)}KB)`
         );
         // メッセージ内容も表示（長すぎる場合は省略）
         const preview = data.length > 200 ? data.substring(0, 200) + '...' : data;
-        console.log(`[VoiceWS] Content: ${preview}`);
+        log.debug(`Content: ${preview}`);
       }
 
       // 共通コールバック
@@ -548,22 +551,22 @@ export class VoiceWebSocketService {
         case 'session_start':
           // セッション開始メッセージ（挨拶テキスト付き）
           // has_audio=true の場合は次にバイナリ音声データが送られてくる
-          console.log(`[VoiceWS]   -> has_audio: ${message.has_audio}`);
+          log.debug(`  -> has_audio: ${message.has_audio}`);
           break;
 
         case 'asr_starting':
           // ASR（音声認識）開始中
-          console.log(`[VoiceWS]   -> ASR starting: ${message.message ?? '(no message)'}`);
+          log.debug(`  -> ASR starting: ${message.message ?? '(no message)'}`);
           break;
 
         case 'asr_connected':
           // ASR（音声認識）接続完了 - 音声データ送信可能
-          console.log(`[VoiceWS]   -> ASR connected: ${message.message ?? '(no message)'}`);
+          log.debug(`  -> ASR connected: ${message.message ?? '(no message)'}`);
           break;
 
         case 'asr_stopped':
           // ASR（音声認識）停止完了
-          console.log(`[VoiceWS]   -> ASR stopped: ${message.message ?? '(no message)'}`);
+          log.debug(`  -> ASR stopped: ${message.message ?? '(no message)'}`);
           break;
 
         case 'transcription': {
@@ -572,9 +575,7 @@ export class VoiceWebSocketService {
           if (transcriptionText !== undefined) {
             // is_final=true は is_partial=false と同義
             const isPartial = message.is_final === true ? false : (message.is_partial ?? true);
-            console.log(
-              `[VoiceWS]   -> transcription: "${transcriptionText}" (final: ${message.is_final})`
-            );
+            log.debug(`  -> transcription: "${transcriptionText}" (final: ${message.is_final})`);
             this.callbacks.onTranscript?.(transcriptionText, isPartial);
           }
           break;
@@ -582,11 +583,9 @@ export class VoiceWebSocketService {
 
         case 'response': {
           // AIレスポンス
-          console.log(
-            `[VoiceWS]   -> response: turn=${message.turn_count}, complete=${message.is_complete}`
-          );
+          log.debug(`  -> response: turn=${message.turn_count}, complete=${message.is_complete}`);
           if (message.message) {
-            console.log(`[VoiceWS]   -> message: "${message.message.substring(0, 100)}..."`);
+            log.debug(`  -> message: "${message.message.substring(0, 100)}..."`);
           }
           break;
         }
@@ -596,7 +595,7 @@ export class VoiceWebSocketService {
           const audioData = message.audio_data ?? message.payload?.audioData;
           if (audioData) {
             const audioSizeKB = Math.round((audioData.length * 0.75) / 1024);
-            console.log(`[VoiceWS]   -> audio_data: ${audioSizeKB}KB (base64)`);
+            log.debug(`  -> audio_data: ${audioSizeKB}KB (base64)`);
             this.callbacks.onAudioReceived?.(audioData);
           }
           break;
@@ -607,7 +606,7 @@ export class VoiceWebSocketService {
           const transcript = message.text ?? message.payload?.transcript;
           if (transcript !== undefined) {
             const isPartial = message.is_partial ?? message.payload?.isPartial ?? false;
-            console.log(`[VoiceWS]   -> transcript: "${transcript}" (partial: ${isPartial})`);
+            log.debug(`  -> transcript: "${transcript}" (partial: ${isPartial})`);
             this.callbacks.onTranscript?.(transcript, isPartial);
           }
           break;
@@ -626,13 +625,13 @@ export class VoiceWebSocketService {
               name: message.name,
               address: message.address,
             };
-            console.log(
-              `[VoiceWS]   -> destination: lat=${destination.latitude}, lng=${destination.longitude}, name=${destination.name ?? 'N/A'}`
+            log.debug(
+              `  -> destination: lat=${destination.latitude}, lng=${destination.longitude}, name=${destination.name ?? 'N/A'}`
             );
             this.callbacks.onDestinationReceived?.(destination);
           } else if (message.payload?.destination) {
             // 旧形式との互換性
-            console.log(`[VoiceWS]   -> destination (legacy): ${message.payload.destination.name}`);
+            log.debug(`  -> destination (legacy): ${message.payload.destination.name}`);
             this.callbacks.onDestinationReceived?.(message.payload.destination);
           }
           break;
@@ -642,17 +641,17 @@ export class VoiceWebSocketService {
           // 新形式: message, 旧形式: payload.error
           const errorMsg = message.message ?? message.payload?.error;
           if (errorMsg) {
-            console.error(`[VoiceWS]   -> ERROR: ${errorMsg}`);
+            log.error(`  -> ERROR: ${errorMsg}`);
             this.callbacks.onError?.(new WebSocketError(errorMsg));
           }
           break;
         }
 
         default:
-          console.log(`[VoiceWS]   -> (no specific handler for type: ${message.type})`);
+          log.debug(`  -> (no specific handler for type: ${message.type})`);
       }
     } catch (error) {
-      console.error('[VoiceWS] Message parse error:', error);
+      log.error('Message parse error:', error);
     }
   }
 
@@ -672,11 +671,11 @@ export class VoiceWebSocketService {
       }
 
       const audioSizeBytes = Math.round(base64Audio.length * 0.75);
-      console.log(`[VoiceWS] Binary audio converted: size=${Math.round(audioSizeBytes / 1024)}KB`);
+      log.debug(`Binary audio converted: size=${Math.round(audioSizeBytes / 1024)}KB`);
 
       this.callbacks.onAudioReceived?.(base64Audio);
     } catch (error) {
-      console.error('[VoiceWS] Failed to process binary audio:', error);
+      log.error('Failed to process binary audio:', error);
     }
   }
 
@@ -700,18 +699,18 @@ export class VoiceWebSocketService {
    */
   private scheduleReconnect(): void {
     if (this.reconnectAttempt >= this.config.reconnectAttempts) {
-      console.log('[VoiceWS] Max reconnect attempts reached');
+      log.debug('Max reconnect attempts reached');
       return;
     }
 
     this.reconnectAttempt++;
     const delay = this.config.reconnectInterval * Math.pow(1.5, this.reconnectAttempt - 1);
 
-    console.log(`[VoiceWS] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempt})`);
+    log.debug(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempt})`);
 
     this.reconnectTimer = setTimeout(() => {
       this.connect().catch((error) => {
-        console.error('[VoiceWS] Reconnect failed:', error);
+        log.error('Reconnect failed:', error);
       });
     }, delay);
   }

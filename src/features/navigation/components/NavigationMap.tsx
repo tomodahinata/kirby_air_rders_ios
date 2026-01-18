@@ -3,6 +3,10 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 
+import { loggers } from '@/shared/lib/logger';
+
+const log = loggers.navigation;
+
 const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
 /**
@@ -122,7 +126,7 @@ function NavigationMapComponent({
   // ルート取得エラー時
   const handleRouteError = (errorMessage: string) => {
     setIsLoading(false);
-    console.error('[NavigationMap] Route error:', errorMessage);
+    log.error('Route error:', errorMessage);
     onError?.(errorMessage);
   };
 

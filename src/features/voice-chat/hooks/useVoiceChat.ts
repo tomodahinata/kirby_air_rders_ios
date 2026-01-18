@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useLocationStore, type LocationData } from '@/shared/lib/location';
+import { loggers } from '@/shared/lib/logger';
 import {
   getAudioPlayerService,
   resetAudioPlayerService,
@@ -20,6 +21,8 @@ import {
 } from '../services/websocketService';
 import { useVoiceChatStore } from '../store/voiceChatStore';
 import type { DestinationPayload, ServerMessage, WebSocketConfig } from '../types';
+
+const log = loggers.voiceChat;
 
 /**
  * 音声チャットフックのオプション
@@ -109,7 +112,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
    */
   const handleServerMessage = useCallback(
     (message: ServerMessage) => {
-      console.log('[useVoiceChat] Handling server message:', message.type);
+      log.debug('Handling server message:', message.type);
 
       switch (message.type) {
         case 'response_start':
@@ -143,17 +146,17 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
    */
   const handleAudioReceived = useCallback(
     async (audioData: string) => {
-      console.log('[useVoiceChat] Audio data received, enqueueing for playback');
+      log.debug('Audio data received, enqueueing for playback');
 
       if (!playerRef.current) {
-        console.warn('[useVoiceChat] Player not initialized');
+        log.warn('Player not initialized');
         return;
       }
 
       try {
         await playerRef.current.enqueue(audioData);
       } catch (err) {
-        console.error('[useVoiceChat] Failed to enqueue audio:', err);
+        log.error('Failed to enqueue audio:', err);
         setError(err instanceof Error ? err.message : 'Audio playback failed');
       }
 
@@ -168,8 +171,8 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
    */
   const handleDestinationReceived = useCallback(
     (receivedDestination: DestinationPayload) => {
-      console.log(
-        '[useVoiceChat] Destination received:',
+      log.debug(
+        'Destination received:',
         receivedDestination.latitude,
         receivedDestination.longitude
       );
@@ -206,14 +209,14 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
     playerRef.current = getAudioPlayerService({
       onStateChange: setPlayerState,
       onQueueComplete: () => {
-        console.log('[useVoiceChat] Audio queue playback complete');
+        log.debug('Audio queue playback complete');
         // 再生完了後、会話状態がまだspeakingならidleに
         if (useVoiceChatStore.getState().conversationState === 'speaking') {
           setConversationState('idle');
         }
       },
       onError: (err) => {
-        console.error('[useVoiceChat] Player error:', err);
+        log.error('Player error:', err);
         setError(err.message);
       },
     });
@@ -222,7 +225,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
     recorderRef.current = getAudioRecorderService({
       onStateChange: setRecordingState,
       onError: (err) => {
-        console.error('[useVoiceChat] Recorder error:', err);
+        log.error('Recorder error:', err);
         setError(err.message);
         setConversationState('idle');
       },
@@ -231,7 +234,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
     // 位置情報取得を並行して開始（sendLocationOnConnectがtrueの場合）
     let locationPromise: Promise<LocationData | null> = Promise.resolve(null);
     if (sendLocationOnConnect) {
-      console.log('[useVoiceChat] Starting location fetch in parallel...');
+      log.debug('Starting location fetch in parallel...');
       locationPromise = fetchLocationSafe({ highAccuracy: true, timeout: 10000 });
     }
 
@@ -239,14 +242,14 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
     const wsService = getVoiceWebSocketService(config, {
       onOpen: async () => {
         setConnectionState('connected');
-        console.log('[useVoiceChat] Connected');
+        log.debug('Connected');
 
         // 位置情報の取得を待って、メタデータを送信
         if (sendLocationOnConnect) {
           try {
             // 位置情報の取得完了を待つ（既に並行で取得開始済み）
             const location = pendingLocationRef.current ?? (await locationPromise);
-            console.log('[useVoiceChat] Location fetch completed, sending metadata');
+            log.debug('Location fetch completed, sending metadata');
 
             // 位置情報メタデータを送信（音声データ送信前に）
             await wsService.sendMetadata(
@@ -268,18 +271,18 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
             );
           } catch (err) {
             // 位置情報取得失敗時もnullを送信して継続
-            console.warn('[useVoiceChat] Location fetch failed, sending null metadata:', err);
+            log.warn('Location fetch failed, sending null metadata:', err);
             await wsService.sendMetadata(null);
           }
         }
       },
       onClose: (code, reason) => {
-        console.log('[useVoiceChat] Connection closed:', code, reason);
+        log.debug('Connection closed:', code, reason);
         setConnectionState('disconnected');
         setConversationState('idle');
       },
       onError: (err) => {
-        console.error('[useVoiceChat] WebSocket error:', err);
+        log.error('WebSocket error:', err);
         setError(err.message);
         setConnectionState('error');
         onError?.(err);
@@ -291,7 +294,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
       onAudioReceived: handleAudioReceived,
       onDestinationReceived: handleDestinationReceived,
       onTranscript: (text, isPartial) => {
-        console.log(`[useVoiceChat] Transcript: "${text}" (partial: ${isPartial})`);
+        log.debug(`Transcript: "${text}" (partial: ${isPartial})`);
         setCurrentTranscript(text, isPartial);
 
         // 確定した転写テキストをユーザーメッセージとして追加
@@ -313,7 +316,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
 
       // 位置情報の結果を保存（onOpenで使用）
       pendingLocationRef.current = locationResult;
-      console.log('[useVoiceChat] Parallel init complete:', {
+      log.debug('Parallel init complete:', {
         ws: wsResult,
         location: locationResult ? 'obtained' : 'null',
       });
@@ -343,7 +346,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
    * WebSocket接続を切断
    */
   const disconnect = useCallback(async () => {
-    console.log('[useVoiceChat] Disconnecting...');
+    log.debug('Disconnecting...');
 
     // 録音中なら停止
     if (recorderRef.current?.isRecording()) {
@@ -370,23 +373,23 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
    */
   const startListening = useCallback(async () => {
     if (!wsServiceRef.current?.isConnected()) {
-      console.warn('[useVoiceChat] Cannot start listening: not connected');
+      log.warn('Cannot start listening: not connected');
       return;
     }
 
     if (recorderRef.current?.isRecording()) {
-      console.warn('[useVoiceChat] Already recording');
+      log.warn('Already recording');
       return;
     }
 
     // 重複呼び出し防止
     if (isStartingListeningRef.current) {
-      console.warn('[useVoiceChat] startListening already in progress, skipping');
+      log.warn('startListening already in progress, skipping');
       return;
     }
     isStartingListeningRef.current = true;
 
-    console.log('[useVoiceChat] Starting to listen...');
+    log.debug('Starting to listen...');
 
     try {
       // 再生中なら停止
@@ -402,14 +405,14 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
         recorderRef.current = getAudioRecorderService({
           onStateChange: setRecordingState,
           onError: (err) => {
-            console.error('[useVoiceChat] Recorder error:', err);
+            log.error('Recorder error:', err);
             setError(err.message);
             setConversationState('idle');
           },
           // ストリーミングモード: 音声チャンクが準備できたらWebSocketで送信
           onAudioChunk: async (base64Data, segmentNumber, durationMs) => {
             if (wsServiceRef.current?.isConnected()) {
-              console.log(`[useVoiceChat] Sending audio chunk #${segmentNumber} (${durationMs}ms)`);
+              log.debug(`Sending audio chunk #${segmentNumber} (${durationMs}ms)`);
               await wsServiceRef.current.sendAudioData(base64Data, 'wav');
             }
           },
@@ -419,13 +422,13 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
         recorderRef.current.setCallbacks({
           onStateChange: setRecordingState,
           onError: (err) => {
-            console.error('[useVoiceChat] Recorder error:', err);
+            log.error('Recorder error:', err);
             setError(err.message);
             setConversationState('idle');
           },
           onAudioChunk: async (base64Data, segmentNumber, durationMs) => {
             if (wsServiceRef.current?.isConnected()) {
-              console.log(`[useVoiceChat] Sending audio chunk #${segmentNumber} (${durationMs}ms)`);
+              log.debug(`Sending audio chunk #${segmentNumber} (${durationMs}ms)`);
               await wsServiceRef.current.sendAudioData(base64Data, 'wav');
             }
           },
@@ -437,9 +440,9 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
       setConversationState('listening');
       clearTranscript();
 
-      console.log('[useVoiceChat] Streaming recording started');
+      log.debug('Streaming recording started');
     } catch (err) {
-      console.error('[useVoiceChat] Failed to start recording:', err);
+      log.error('Failed to start recording:', err);
       setError(err instanceof Error ? err.message : 'Recording failed');
       setConversationState('idle');
     } finally {
@@ -452,11 +455,11 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
    */
   const stopListening = useCallback(async () => {
     if (!recorderRef.current?.isRecording()) {
-      console.warn('[useVoiceChat] Not recording');
+      log.warn('Not recording');
       return;
     }
 
-    console.log('[useVoiceChat] Stopping streaming recording...');
+    log.debug('Stopping streaming recording...');
     setConversationState('processing');
 
     try {
@@ -467,7 +470,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
         // 従来モードの場合（互換性のため）
         const audioData = await recorderRef.current.stop();
         if (audioData && wsServiceRef.current?.isConnected()) {
-          console.log('[useVoiceChat] Sending recorded audio data');
+          log.debug('Sending recorded audio data');
           await wsServiceRef.current.sendAudioData(audioData, 'wav');
         }
       }
@@ -477,9 +480,9 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
         await wsServiceRef.current.sendAudioEnd();
       }
 
-      console.log('[useVoiceChat] Streaming recording stopped');
+      log.debug('Streaming recording stopped');
     } catch (err) {
-      console.error('[useVoiceChat] Failed to stop recording:', err);
+      log.error('Failed to stop recording:', err);
       setError(err instanceof Error ? err.message : 'Failed to process audio');
       setConversationState('idle');
     }
@@ -490,7 +493,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
    */
   const sendAudioData = useCallback(async (audioData: string) => {
     if (!wsServiceRef.current?.isConnected()) {
-      console.warn('[useVoiceChat] Cannot send audio: not connected');
+      log.warn('Cannot send audio: not connected');
       return;
     }
 
@@ -503,11 +506,11 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
   const sendTextMessage = useCallback(
     async (text: string) => {
       if (!wsServiceRef.current?.isConnected()) {
-        console.warn('[useVoiceChat] Cannot send text: not connected');
+        log.warn('Cannot send text: not connected');
         return;
       }
 
-      console.log('[useVoiceChat] Sending text message:', text);
+      log.debug('Sending text message:', text);
       await wsServiceRef.current.sendText(text);
       addUserMessage(text);
       setConversationState('processing');
@@ -557,7 +560,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}) {
   // アンマウント時のクリーンアップ（コンポーネント破棄時のみ）
   useEffect(() => {
     return () => {
-      console.log('[useVoiceChat] Component unmounting, cleaning up...');
+      log.debug('Component unmounting, cleaning up...');
       if (wsServiceRef.current) {
         wsServiceRef.current.disconnect();
       }

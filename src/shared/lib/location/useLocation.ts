@@ -9,6 +9,7 @@ import {
   LocationError,
   requestLocationPermission,
 } from './locationService';
+import { loggers } from '../logger';
 import {
   type InitialMetadata,
   type LocationData,
@@ -17,6 +18,8 @@ import {
   type LocationState,
   DEFAULT_LOCATION_OPTIONS,
 } from './schema';
+
+const log = loggers.location;
 
 /**
  * 位置情報ストアのアクション
@@ -151,7 +154,7 @@ export function useLocation(options?: LocationOptions) {
    */
   const getLocation = useCallback(async () => {
     if (isFetchingRef.current) {
-      console.log('[useLocation] Already fetching, skipping...');
+      log.debug('Already fetching, skipping...');
       return location;
     }
 
@@ -168,7 +171,7 @@ export function useLocation(options?: LocationOptions) {
    */
   const getLocationSafe = useCallback(async () => {
     if (isFetchingRef.current) {
-      console.log('[useLocation] Already fetching, returning current...');
+      log.debug('Already fetching, returning current...');
       return location;
     }
 

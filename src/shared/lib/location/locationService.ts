@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
 
+import { loggers } from '@/shared/lib/logger';
 import {
   type LocationData,
   type LocationCoordinates,
@@ -8,6 +9,8 @@ import {
   type LocationOptions,
   DEFAULT_LOCATION_OPTIONS,
 } from './schema';
+
+const log = loggers.location;
 
 /**
  * 位置情報サービスエラー
@@ -39,7 +42,7 @@ export async function checkLocationPermission(): Promise<LocationPermissionStatu
         return 'undetermined';
     }
   } catch (error) {
-    console.error('[Location] Permission check error:', error);
+    log.error('Permission check error:', error);
     return 'undetermined';
   }
 }
@@ -49,16 +52,16 @@ export async function checkLocationPermission(): Promise<LocationPermissionStatu
  */
 export async function requestLocationPermission(): Promise<LocationPermissionStatus> {
   try {
-    console.log('[Location] Requesting foreground permission...');
+    log.debug('Requesting foreground permission...');
     const { status } = await Location.requestForegroundPermissionsAsync();
 
     const result: LocationPermissionStatus =
       status === Location.PermissionStatus.GRANTED ? 'granted' : 'denied';
 
-    console.log(`[Location] Permission result: ${result}`);
+    log.debug(`Permission result: ${result}`);
     return result;
   } catch (error) {
-    console.error('[Location] Permission request error:', error);
+    log.error('Permission request error:', error);
     return 'denied';
   }
 }
@@ -70,7 +73,7 @@ export async function isLocationServicesEnabled(): Promise<boolean> {
   try {
     return await Location.hasServicesEnabledAsync();
   } catch (error) {
-    console.error('[Location] Services check error:', error);
+    log.error('Services check error:', error);
     return false;
   }
 }
@@ -81,7 +84,7 @@ export async function isLocationServicesEnabled(): Promise<boolean> {
 export async function getCurrentLocation(options: LocationOptions = {}): Promise<LocationData> {
   const opts = { ...DEFAULT_LOCATION_OPTIONS, ...options };
 
-  console.log('[Location] Getting current location...', opts);
+  log.debug('Getting current location...', opts);
 
   // 権限を確認
   let permissionStatus = await checkLocationPermission();
@@ -128,7 +131,7 @@ export async function getCurrentLocation(options: LocationOptions = {}): Promise
     );
   }
 
-  console.log('[Location] Position obtained:', {
+  log.debug('Position obtained:', {
     lat: location.coords.latitude,
     lng: location.coords.longitude,
     accuracy: location.coords.accuracy,
@@ -169,11 +172,11 @@ export async function getCurrentLocation(options: LocationOptions = {}): Promise
           subregion: addr.subregion,
           timezone: addr.timezone,
         };
-        console.log('[Location] Address obtained:', address.city, address.region);
+        log.debug('Address obtained:', address.city, address.region);
       }
     } catch (error) {
       // 住所取得失敗は致命的ではないのでログのみ
-      console.warn('[Location] Reverse geocode failed:', error);
+      log.warn('Reverse geocode failed:', error);
     }
   }
 
@@ -197,9 +200,9 @@ export async function getCurrentLocationSafe(
     return await getCurrentLocation(options);
   } catch (error) {
     if (error instanceof LocationError) {
-      console.warn(`[Location] Safe get failed (${error.code}):`, error.message);
+      log.warn(`Safe get failed (${error.code}):`, error.message);
     } else {
-      console.error('[Location] Safe get failed:', error);
+      log.error('Safe get failed:', error);
     }
     return null;
   }

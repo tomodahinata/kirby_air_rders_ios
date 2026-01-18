@@ -13,6 +13,9 @@ import { UserBadge } from '@/shared/components/ui/UserBadge';
 import { AgentConsultCard } from '@/shared/components/ui/AgentConsultCard';
 import { DestinationBottomSheet } from '@/shared/components/ui/DestinationBottomSheet';
 import { LocationTargetButton } from '@/shared/components/ui/LocationTargetButton';
+import { loggers } from '@/shared/lib/logger';
+
+const log = loggers.copilot;
 
 type ScreenMode = 'home' | 'navigation';
 
@@ -128,11 +131,11 @@ export function CopilotScreen() {
   }, [stopListening]);
 
   const handleQuickAction = useCallback((actionId: string) => {
-    console.log('Quick action selected:', actionId);
+    log.debug('Quick action selected:', actionId);
   }, []);
 
   const handleAddSuggestion = useCallback((type: string) => {
-    console.log('Add suggestion:', type);
+    log.debug('Add suggestion:', type);
     if (type === 'scenic') {
       setShowSuggestionPopup(false);
     } else if (type === 'rest') {
@@ -142,7 +145,7 @@ export function CopilotScreen() {
   }, []);
 
   const handleViewDetails = useCallback((type: 'scenic' | 'rest') => {
-    console.log('View details:', type);
+    log.debug('View details:', type);
     setSelectedPlace(type);
   }, []);
 
@@ -156,27 +159,24 @@ export function CopilotScreen() {
   }, [handleAgentPress]);
 
   const handleUserPress = useCallback(() => {
-    console.log('User menu pressed');
+    log.debug('User menu pressed');
   }, []);
 
   const handleSearchFocus = useCallback(() => {
-    console.log('Search focused');
+    log.debug('Search focused');
   }, []);
 
   const handleHistoryPress = useCallback(() => {
-    console.log('History pressed');
-    // Navigate to history screen or show history modal
+    log.debug('History pressed');
   }, []);
 
   const handleHomePress = useCallback(() => {
-    console.log('Home pressed');
-    // Set destination to home and switch to navigation mode
+    log.debug('Home pressed');
     setScreenMode('navigation');
   }, []);
 
   const handleLocationTarget = useCallback(() => {
-    console.log('Location target pressed');
-    // Center map on current location
+    log.debug('Location target pressed');
   }, []);
 
   // エラー表示
@@ -203,10 +203,10 @@ export function CopilotScreen() {
           destination={screenMode === 'navigation' ? destinationCoord : null}
           darkMode={false}
           onRouteReady={(result) => {
-            console.log('[CopilotScreen] Route ready:', result);
+            log.debug('Route ready:', result);
           }}
           onError={(err) => {
-            console.error('[CopilotScreen] Route error:', err);
+            log.error('Route error:', err);
           }}
         />
       </View>

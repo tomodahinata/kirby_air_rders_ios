@@ -1,6 +1,10 @@
 import * as Linking from 'expo-linking';
 import { Platform, Alert } from 'react-native';
 
+import { loggers } from '@/shared/lib/logger';
+
+const log = loggers.navigation;
+
 /**
  * 目的地情報
  */
@@ -30,7 +34,7 @@ export async function openGoogleMapsNavigation(
 ): Promise<boolean> {
   // 座標が必須
   if (destination.latitude === undefined || destination.longitude === undefined) {
-    console.error('[Navigation] Latitude and longitude are required');
+    log.error('Latitude and longitude are required');
     Alert.alert('ナビゲーションエラー', '目的地の座標が指定されていません。');
     return false;
   }
@@ -58,17 +62,17 @@ export async function openGoogleMapsNavigation(
     const canOpenApp = await Linking.canOpenURL(googleMapsAppUrl);
 
     if (canOpenApp && googleMapsAppUrl) {
-      console.log('[Navigation] Opening Google Maps app:', googleMapsAppUrl);
+      log.debug('Opening Google Maps app:', googleMapsAppUrl);
       await Linking.openURL(googleMapsAppUrl);
       return true;
     } else {
       // Google Mapsアプリがない場合はWeb版を開く
-      console.log('[Navigation] Opening Google Maps web:', googleMapsWebUrl);
+      log.debug('Opening Google Maps web:', googleMapsWebUrl);
       await Linking.openURL(googleMapsWebUrl);
       return true;
     }
   } catch (error) {
-    console.error('[Navigation] Failed to open Google Maps:', error);
+    log.error('Failed to open Google Maps:', error);
     Alert.alert('ナビゲーションエラー', 'Google Mapsを開けませんでした。', [{ text: 'OK' }]);
     return false;
   }
@@ -82,7 +86,7 @@ export async function openAppleMapsNavigation(
   currentLocation?: CurrentLocation
 ): Promise<boolean> {
   if (Platform.OS !== 'ios') {
-    console.warn('[Navigation] Apple Maps is only available on iOS');
+    log.warn('Apple Maps is only available on iOS');
     return false;
   }
 
@@ -103,11 +107,11 @@ export async function openAppleMapsNavigation(
   const appleMapsUrl = `maps://?${originParam}daddr=${destinationParam}&dirflg=d`;
 
   try {
-    console.log('[Navigation] Opening Apple Maps:', appleMapsUrl);
+    log.debug('Opening Apple Maps:', appleMapsUrl);
     await Linking.openURL(appleMapsUrl);
     return true;
   } catch (error) {
-    console.error('[Navigation] Failed to open Apple Maps:', error);
+    log.error('Failed to open Apple Maps:', error);
     return false;
   }
 }
