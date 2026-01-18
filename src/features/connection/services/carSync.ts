@@ -1,3 +1,4 @@
+import { loggers } from '@/shared/lib/logger';
 import type {
   ConnectionStatus,
   TransferProgress,
@@ -6,6 +7,8 @@ import type {
   ConnectionEvent,
   SyncableData,
 } from '../types';
+
+const log = loggers.connection;
 
 /**
  * シミュレートされた車両情報
@@ -50,7 +53,7 @@ function emitEvent(type: ConnectionEvent['type'], details?: Record<string, unkno
   eventListeners.forEach((listener) => listener(event));
 
   // デバッグログ
-  console.log(`[CarSync] Event: ${type}`, details ?? '');
+  log.debug(`[CarSync] Event: ${type}`, details ?? '');
 }
 
 /**
@@ -75,7 +78,7 @@ export async function simulateConnection(
   emitEvent('connection_established', { vehicle: MOCK_VEHICLE });
   onProgress?.('connected');
 
-  console.log('[CarSync] Connected to vehicle:', MOCK_VEHICLE.name);
+  log.debug('[CarSync] Connected to vehicle:', MOCK_VEHICLE.name);
 
   return MOCK_VEHICLE;
 }
@@ -91,9 +94,9 @@ export async function syncToCar(
   const dataString = JSON.stringify(data);
   const totalBytes = new TextEncoder().encode(dataString).length;
 
-  console.log('[CarSync] Starting data transfer...');
-  console.log('[CarSync] Data size:', totalBytes, 'bytes');
-  console.log('[CarSync] Context data:', data);
+  log.debug('[CarSync] Starting data transfer...');
+  log.debug('[CarSync] Data size:', totalBytes, 'bytes');
+  log.debug('[CarSync] Context data:', data);
 
   emitEvent('transfer_started', { totalBytes });
 
@@ -173,12 +176,12 @@ export async function syncToCar(
 
   emitEvent('transfer_complete', result);
 
-  console.log('[CarSync] Transfer complete!');
-  console.log('[CarSync] Duration:', duration, 'ms');
-  console.log('[CarSync] Result:', result);
+  log.debug('[CarSync] Transfer complete!');
+  log.debug('[CarSync] Duration:', duration, 'ms');
+  log.debug('[CarSync] Result:', result);
 
   // トースト通知用のメッセージ（UIで使用）
-  console.log(
+  log.debug(
     '%c✓ 車載ディスプレイにデータを送信しました',
     'color: #22c55e; font-weight: bold; font-size: 14px;'
   );
@@ -192,7 +195,7 @@ export async function syncToCar(
 export async function disconnect(): Promise<void> {
   await delay(200);
   emitEvent('connection_lost');
-  console.log('[CarSync] Disconnected');
+  log.debug('[CarSync] Disconnected');
 }
 
 /**

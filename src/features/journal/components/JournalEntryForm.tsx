@@ -10,7 +10,10 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
+import { loggers } from '@/shared/lib/logger';
 import { StarRating } from '@/shared/components/ui/StarRating';
+
+const log = loggers.journal;
 import { Button } from '@/shared/components/ui/Button';
 import { AddressInput } from './AddressInput';
 import { DateTimePicker } from './DateTimePicker';
@@ -143,7 +146,7 @@ function JournalEntryFormComponent({ initialValues, entryId, onSuccess }: Journa
       const result = createJournalEntrySchema.safeParse(entryData);
       if (!result.success) {
         Alert.alert('入力エラー', '入力内容を確認してください');
-        console.error('[JournalForm] Validation error:', result.error);
+        log.error('Validation error:', result.error);
         return;
       }
 
@@ -159,7 +162,7 @@ function JournalEntryFormComponent({ initialValues, entryId, onSuccess }: Journa
         router.back();
       }
     } catch (error) {
-      console.error('[JournalForm] Submit error:', error);
+      log.error('Submit error:', error);
       Alert.alert('エラー', '保存に失敗しました。もう一度お試しください。');
     } finally {
       setIsSubmitting(false);

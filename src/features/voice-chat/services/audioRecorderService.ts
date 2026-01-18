@@ -1,5 +1,8 @@
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import { File } from 'expo-file-system';
+import { loggers } from '@/shared/lib/logger';
+
+const log = loggers.audio;
 
 /**
  * ArrayBufferをBase64に変換
@@ -143,13 +146,13 @@ export class AudioRecorderService {
   private async startInternal(streamingMode: boolean): Promise<void> {
     // 重複呼び出し防止
     if (this.isStarting) {
-      console.warn('[AudioRecorder] start() already in progress, skipping');
+      log.warn('start() already in progress, skipping');
       return;
     }
 
     // 既に録音中の場合はスキップ
     if (this.state.isRecording) {
-      console.warn('[AudioRecorder] Already recording, skipping');
+      log.warn('Already recording, skipping');
       return;
     }
 
@@ -162,7 +165,7 @@ export class AudioRecorderService {
     try {
       // 既存の録音オブジェクトがある場合はクリーンアップ
       if (this.recording) {
-        console.log('[AudioRecorder] Cleaning up existing recording before start');
+        log.debug('Cleaning up existing recording before start');
         try {
           await this.recording.stopAndUnloadAsync();
         } catch {
@@ -187,10 +190,8 @@ export class AudioRecorderService {
         throw new Error('マイクの権限が許可されていません');
       }
 
-      console.log(`[AudioRecorder] Starting in ${streamingMode ? 'STREAMING' : 'NORMAL'} mode`);
-      console.log(
-        `[AudioRecorder] Config: ${RECORDING_CONFIG.sampleRate}Hz, ${RECORDING_CONFIG.numberOfChannels}ch`
-      );
+      log.debug(`Starting in ${streamingMode ? 'STREAMING' : 'NORMAL'} mode`);
+      log.debug(`Config: ${RECORDING_CONFIG.sampleRate}Hz, ${RECORDING_CONFIG.numberOfChannels}ch`);
 
       if (streamingMode) {
         // ストリーミングモード: 最初のセグメントを開始
@@ -208,7 +209,7 @@ export class AudioRecorderService {
         segmentsSent: 0,
       });
     } catch (error) {
-      console.error('[AudioRecorder] Start error:', error);
+      log.error('Start error:', error);
       this.callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
       throw error;
     } finally {
@@ -238,7 +239,7 @@ export class AudioRecorderService {
     });
 
     await this.recording.startAsync();
-    console.log('[AudioRecorder] Recording started (normal mode)');
+    log.debug('Recording started (normal mode)');
   }
 
   /**
@@ -246,7 +247,7 @@ export class AudioRecorderService {
    */
   private async startNewSegment(): Promise<void> {
     if (this.stopRequested) {
-      console.log('[AudioRecorder] Stop requested, not starting new segment');
+      log.debug('Stop requested, not starting new segment');
       return;
     }
 
@@ -266,14 +267,14 @@ export class AudioRecorderService {
       await this.recording.prepareToRecordAsync(RECORDING_OPTIONS);
       await this.recording.startAsync();
 
-      console.log(`[AudioRecorder] Segment ${this.segmentNumber} started`);
+      log.debug(`Segment ${this.segmentNumber} started`);
 
       // 次のセグメント処理をスケジュール
       this.streamingTimer = setTimeout(() => {
         this.processSegment();
       }, RECORDING_CONFIG.streamingSegmentIntervalMs);
     } catch (error) {
-      console.error('[AudioRecorder] Failed to start new segment:', error);
+      log.error('Failed to start new segment:', error);
       this.callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
     }
   }
@@ -305,8 +306,8 @@ export class AudioRecorderService {
         this.totalDurationMs += segmentDurationMs;
 
         const fileSizeKB = Math.round(arrayBuffer.byteLength / 1024);
-        console.log(
-          `[AudioRecorder] Segment ${this.segmentNumber} complete: ${fileSizeKB}KB, ` +
+        log.debug(
+          `Segment ${this.segmentNumber} complete: ${fileSizeKB}KB, ` +
             `${segmentDurationMs}ms, total: ${this.totalDurationMs}ms`
         );
 
@@ -333,11 +334,11 @@ export class AudioRecorderService {
       if (!this.stopRequested) {
         await this.startNewSegment();
       } else {
-        console.log('[AudioRecorder] Streaming stopped after segment processing');
+        log.debug('Streaming stopped after segment processing');
         await this.finalizeStreaming();
       }
     } catch (error) {
-      console.error('[AudioRecorder] Segment processing error:', error);
+      log.error('Segment processing error:', error);
       this.callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
     } finally {
       this.isProcessingSegment = false;
@@ -368,8 +369,8 @@ export class AudioRecorderService {
       metering: null,
     });
 
-    console.log(
-      `[AudioRecorder] Streaming finalized. Total segments: ${this.segmentNumber}, ` +
+    log.debug(
+      `Streaming finalized. Total segments: ${this.segmentNumber}, ` +
         `Total duration: ${this.totalDurationMs}ms`
     );
   }
@@ -386,18 +387,18 @@ export class AudioRecorderService {
     }
 
     if (!this.recording) {
-      console.warn('[AudioRecorder] No active recording to stop');
+      log.warn('No active recording to stop');
       return null;
     }
 
     try {
       // 録音を停止
       await this.recording.stopAndUnloadAsync();
-      console.log('[AudioRecorder] Recording stopped');
+      log.debug('Recording stopped');
 
       // 録音ファイルのURIを取得
       const uri = this.recording.getURI();
-      console.log(`[AudioRecorder] Recording URI: ${uri}`);
+      log.debug(`Recording URI: ${uri}`);
 
       if (uri) {
         // 新しいFileSystem APIを使用してファイルを読み取り
@@ -406,7 +407,7 @@ export class AudioRecorderService {
         const base64 = arrayBufferToBase64(arrayBuffer);
 
         const fileSizeKB = Math.round(arrayBuffer.byteLength / 1024);
-        console.log(`[AudioRecorder] Final audio size: ${fileSizeKB}KB`);
+        log.debug(`Final audio size: ${fileSizeKB}KB`);
 
         // ファイルを削除（クリーンアップ）
         try {
@@ -435,7 +436,7 @@ export class AudioRecorderService {
       this.updateState({ isRecording: false });
       return null;
     } catch (error) {
-      console.error('[AudioRecorder] Stop error:', error);
+      log.error('Stop error:', error);
       this.callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
       this.recording = null;
       this.updateState({ isRecording: false });
@@ -449,11 +450,11 @@ export class AudioRecorderService {
    */
   async stopStreaming(): Promise<void> {
     if (!this.isStreamingMode) {
-      console.warn('[AudioRecorder] Not in streaming mode');
+      log.warn('Not in streaming mode');
       return;
     }
 
-    console.log('[AudioRecorder] Stopping streaming...');
+    log.debug('Stopping streaming...');
     this.stopRequested = true;
     this.stopStreamingTimer();
 
@@ -474,9 +475,8 @@ export class AudioRecorderService {
           this.totalDurationMs += segmentDurationMs;
 
           const fileSizeKB = Math.round(arrayBuffer.byteLength / 1024);
-          console.log(
-            `[AudioRecorder] Final segment ${this.segmentNumber}: ${fileSizeKB}KB, ` +
-              `${segmentDurationMs}ms`
+          log.debug(
+            `Final segment ${this.segmentNumber}: ${fileSizeKB}KB, ` + `${segmentDurationMs}ms`
           );
 
           // 最終チャンクを送信
@@ -493,13 +493,13 @@ export class AudioRecorderService {
 
         this.recording = null;
       } catch (error) {
-        console.error('[AudioRecorder] Error stopping final segment:', error);
+        log.error('Error stopping final segment:', error);
       }
     }
 
     // セグメント処理中の場合は終了を待つ
     if (this.isProcessingSegment) {
-      console.log('[AudioRecorder] Waiting for segment processing to complete...');
+      log.debug('Waiting for segment processing to complete...');
       // 処理完了を待つ（最大3秒）
       let waitCount = 0;
       while (this.isProcessingSegment && waitCount < 30) {
@@ -552,7 +552,7 @@ export class AudioRecorderService {
       durationMs: 0,
       metering: null,
     });
-    console.log('[AudioRecorder] Recording cancelled');
+    log.debug('Recording cancelled');
   }
 
   /**

@@ -1,5 +1,8 @@
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid, AVPlaybackStatus } from 'expo-av';
 import { File, Directory, Paths } from 'expo-file-system';
+import { loggers } from '@/shared/lib/logger';
+
+const log = loggers.audio;
 
 /**
  * 再生設定
@@ -93,7 +96,7 @@ export class AudioPlayerService {
         this.tempDir.create();
       }
     } catch (error) {
-      console.error('[AudioPlayer] Failed to create temp dir:', error);
+      log.error('Failed to create temp dir:', error);
     }
   }
 
@@ -111,15 +114,13 @@ export class AudioPlayerService {
 
     // キューサイズの制限
     if (this.queue.length >= PLAYBACK_CONFIG.maxQueueSize) {
-      console.warn('[AudioPlayer] Queue full, dropping oldest item');
+      log.warn('Queue full, dropping oldest item');
       this.queue.shift();
     }
 
     this.queue.push(item);
     const dataSize = Math.round((base64Data.length * 0.75) / 1024);
-    console.log(
-      `[AudioPlayer] Enqueued: ${itemId}, Size: ${dataSize}KB, Queue length: ${this.queue.length}`
-    );
+    log.debug(`Enqueued: ${itemId}, Size: ${dataSize}KB, Queue length: ${this.queue.length}`);
 
     this.updateState({ queueLength: this.queue.length });
 
@@ -140,7 +141,7 @@ export class AudioPlayerService {
     }
 
     this.isProcessingQueue = true;
-    console.log('[AudioPlayer] Starting queue processing');
+    log.debug('Starting queue processing');
 
     // Audio セッションを設定
     try {
@@ -153,7 +154,7 @@ export class AudioPlayerService {
         playThroughEarpieceAndroid: false,
       });
     } catch (error) {
-      console.error('[AudioPlayer] Failed to set audio mode:', error);
+      log.error('Failed to set audio mode:', error);
     }
 
     while (this.queue.length > 0) {
@@ -169,9 +170,9 @@ export class AudioPlayerService {
       try {
         await this.playItem(item);
         this.callbacks.onItemComplete?.(item.id);
-        console.log(`[AudioPlayer] Completed: ${item.id}`);
+        log.debug(`Completed: ${item.id}`);
       } catch (error) {
-        console.error(`[AudioPlayer] Error playing ${item.id}:`, error);
+        log.error(`Error playing ${item.id}:`, error);
         this.callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
       }
     }
@@ -183,7 +184,7 @@ export class AudioPlayerService {
       queueLength: 0,
     });
 
-    console.log('[AudioPlayer] Queue processing complete');
+    log.debug('Queue processing complete');
     this.callbacks.onQueueComplete?.();
   }
 
@@ -198,7 +199,7 @@ export class AudioPlayerService {
       const bytes = base64ToUint8Array(item.base64Data);
       await tempFile.write(bytes);
 
-      console.log(`[AudioPlayer] Playing: ${item.id}, File size: ${bytes.byteLength} bytes`);
+      log.debug(`Playing: ${item.id}, File size: ${bytes.byteLength} bytes`);
 
       // ステータスコールバックを有効化
       this.isStatusCallbackActive = true;
@@ -278,15 +279,15 @@ export class AudioPlayerService {
 
     if (!status.isLoaded) {
       if (status.error) {
-        console.error('[AudioPlayer] Playback error:', status.error);
+        log.error('Playback error:', status.error);
       }
       return;
     }
 
     // 再生中または完了時のみログを出力（ログスパム防止）
     if (status.isPlaying || status.didJustFinish) {
-      console.log(
-        `[AudioPlayer] Playback: ` +
+      log.debug(
+        `Playback: ` +
           `${Math.round(status.positionMillis / 1000)}s / ` +
           `${Math.round((status.durationMillis ?? 0) / 1000)}s` +
           (status.didJustFinish ? ' [FINISHED]' : '')
@@ -298,7 +299,7 @@ export class AudioPlayerService {
    * 再生を停止
    */
   async stop(): Promise<void> {
-    console.log('[AudioPlayer] Stopping playback');
+    log.debug('Stopping playback');
 
     // ステータスコールバックを無効化
     this.isStatusCallbackActive = false;
@@ -312,7 +313,7 @@ export class AudioPlayerService {
         await this.currentSound.stopAsync();
         await this.currentSound.unloadAsync();
       } catch (error) {
-        console.error('[AudioPlayer] Error stopping sound:', error);
+        log.error('Error stopping sound:', error);
       }
       this.currentSound = null;
     }
@@ -333,7 +334,7 @@ export class AudioPlayerService {
     if (this.currentSound && this.state.isPlaying) {
       await this.currentSound.pauseAsync();
       this.updateState({ isPaused: true });
-      console.log('[AudioPlayer] Paused');
+      log.debug('Paused');
     }
   }
 
@@ -344,7 +345,7 @@ export class AudioPlayerService {
     if (this.currentSound && this.state.isPaused) {
       await this.currentSound.playAsync();
       this.updateState({ isPaused: false });
-      console.log('[AudioPlayer] Resumed');
+      log.debug('Resumed');
     }
   }
 
@@ -354,7 +355,7 @@ export class AudioPlayerService {
   clearQueue(): void {
     this.queue = [];
     this.updateState({ queueLength: 0 });
-    console.log('[AudioPlayer] Queue cleared');
+    log.debug('Queue cleared');
   }
 
   /**
@@ -387,9 +388,9 @@ export class AudioPlayerService {
         await this.tempDir.delete();
       }
       await this.ensureTempDir();
-      console.log('[AudioPlayer] Cleaned up temp files');
+      log.debug('Cleaned up temp files');
     } catch (error) {
-      console.error('[AudioPlayer] Cleanup error:', error);
+      log.error('Cleanup error:', error);
     }
   }
 
