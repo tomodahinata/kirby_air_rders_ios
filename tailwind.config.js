@@ -64,6 +64,21 @@ module.exports = {
           highlight: 'rgba(251, 191, 36, 0.15)',
           glass: 'rgba(30, 41, 59, 0.7)',
         },
+
+        // === Voice Input Light Mode Design System ===
+        voice: {
+          bg: '#f8fafc',
+          surface: '#ffffff',
+          ring1: 'rgba(59, 130, 246, 0.06)',
+          ring2: 'rgba(59, 130, 246, 0.12)',
+          ring3: 'rgba(59, 130, 246, 0.25)',
+          ring4: 'rgba(147, 197, 253, 0.7)',
+          core: '#3b82f6',
+        },
+        highlight: {
+          bg: '#dbeafe',
+          text: '#1d4ed8',
+        },
       },
       fontSize: {
         // === Automotive-optimized typography ===

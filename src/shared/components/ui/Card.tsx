@@ -4,7 +4,7 @@ import { View, Pressable } from 'react-native';
 import type { ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 
-type CardVariant = 'default' | 'highlight' | 'glass' | 'neon';
+type CardVariant = 'default' | 'highlight' | 'glass' | 'neon' | 'light';
 
 interface CardProps {
   children: ReactNode;
@@ -16,17 +16,18 @@ interface CardProps {
   accessibilityHint?: string;
 }
 
-// Dark mode variant styles
+// Variant styles with light mode support
 const variantStyles: Record<CardVariant, string> = {
   default: 'bg-surface-elevated border border-slate-700',
   highlight: 'bg-amber-900/30 border-2 border-amber-500/50',
   glass: 'bg-surface-glass border border-slate-600/50',
   neon: 'bg-surface-elevated border border-primary-500/50',
+  light: 'bg-white',
 };
 
 // Shadow configurations per variant
 const getShadowStyle = (variant: CardVariant, pressed: boolean = false): ViewStyle => {
-  const baseOpacity = pressed ? 0.1 : 0.15;
+  const baseOpacity = pressed ? 0.04 : 0.08;
 
   switch (variant) {
     case 'neon':
@@ -45,11 +46,19 @@ const getShadowStyle = (variant: CardVariant, pressed: boolean = false): ViewSty
         shadowRadius: 20,
         elevation: 6,
       };
+    case 'light':
+      return {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: baseOpacity,
+        shadowRadius: 12,
+        elevation: 3,
+      };
     default:
       return {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: baseOpacity,
+        shadowOpacity: pressed ? 0.1 : 0.15,
         shadowRadius: 24,
         elevation: 4,
       };
@@ -65,7 +74,7 @@ function CardComponent({
   accessibilityLabel,
   accessibilityHint,
 }: CardProps) {
-  const baseStyles = `rounded-3xl p-5 ${variantStyles[variant]}`;
+  const baseStyles = `rounded-2xl p-4 ${variantStyles[variant]}`;
 
   if (onPress) {
     return (

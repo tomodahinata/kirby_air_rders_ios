@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Upload, BookOpen, MapPin, Star, Calendar, CheckCircle2, Clock } from 'lucide-react-native';
+import { BookOpen, MapPin, Star, Calendar, CheckCircle2, Clock, Car } from 'lucide-react-native';
 
 import {
   useCarSync,
@@ -24,21 +24,26 @@ function formatDate(isoString: string): string {
 }
 
 /**
- * ジャーナルエントリーカード
+ * ジャーナルエントリーカード（ライトモード）
  */
 function JournalEntryItem({ entry, isSynced }: { entry: ManualJournalEntry; isSynced?: boolean }) {
   return (
     <View
-      className={`rounded-xl p-4 mb-2 min-h-[52px] ${
-        isSynced ? 'bg-surface-overlay' : 'bg-surface-elevated'
-      }`}
+      className={`rounded-xl p-4 mb-2 ${isSynced ? 'bg-slate-50' : 'bg-white'}`}
+      style={{
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 1,
+      }}
     >
       <View className="flex-row items-center justify-between mb-1">
         <View className="flex-row items-center flex-1 mr-2">
-          {isSynced && <CheckCircle2 size={14} color="#22c55e" className="mr-1" />}
+          {isSynced && <CheckCircle2 size={14} color="#22c55e" />}
           <Text
-            className={`text-car-base font-semibold flex-1 ${
-              isSynced ? 'text-text-muted' : 'text-text-primary'
+            className={`text-base font-semibold flex-1 ml-1 ${
+              isSynced ? 'text-slate-400' : 'text-slate-800'
             }`}
             numberOfLines={1}
           >
@@ -48,26 +53,21 @@ function JournalEntryItem({ entry, isSynced }: { entry: ManualJournalEntry; isSy
         <View className="flex-row items-center">
           <Star
             size={14}
-            color={isSynced ? '#64748b' : '#f59e0b'}
-            fill={isSynced ? '#64748b' : '#f59e0b'}
+            color={isSynced ? '#cbd5e1' : '#f59e0b'}
+            fill={isSynced ? '#cbd5e1' : '#f59e0b'}
           />
-          <Text className={`text-car-sm ml-1 ${isSynced ? 'text-text-muted' : 'text-warning'}`}>
+          <Text className={`text-sm ml-1 ${isSynced ? 'text-slate-400' : 'text-amber-500'}`}>
             {entry.rating}
           </Text>
         </View>
       </View>
       <View className="flex-row items-center">
         <MapPin size={12} color="#94a3b8" />
-        <Text className="text-car-sm text-text-secondary ml-1 flex-1" numberOfLines={1}>
+        <Text className="text-sm text-slate-500 ml-1 flex-1" numberOfLines={1}>
           {entry.address.prefecture} {entry.address.city}
         </Text>
-        <Text className="text-car-sm text-text-muted ml-2">{formatDate(entry.visited_at)}</Text>
+        <Text className="text-sm text-slate-400 ml-2">{formatDate(entry.visited_at)}</Text>
       </View>
-      {entry.notes && (
-        <Text className="text-car-sm text-text-secondary mt-1" numberOfLines={2}>
-          {entry.notes}
-        </Text>
-      )}
     </View>
   );
 }
@@ -163,48 +163,70 @@ export default function SyncScreen() {
   }, [lastSyncedAt]);
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-surface-base">
+    <SafeAreaView edges={['top']} className="flex-1 bg-slate-50">
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
         {/* ヘッダー */}
         <View className="px-5 pt-4 pb-6">
           <View className="flex-row items-center justify-between">
             <View>
-              <Text className="text-car-2xl font-bold text-text-primary">データ同期</Text>
-              <Text className="text-car-base text-text-secondary mt-1">
+              <Text className="text-2xl font-bold text-slate-800">データ同期</Text>
+              <Text className="text-base text-slate-500 mt-1">
                 ジャーナルを車載器にアップロード
               </Text>
             </View>
-            <View className="bg-primary-600/20 p-3 rounded-full">
-              <Upload size={28} color="#60a5fa" />
+            <View className="bg-blue-100 p-3 rounded-2xl">
+              <Car size={28} color="#3b82f6" />
             </View>
           </View>
         </View>
 
         {/* 同期状態サマリー */}
-        <View className="px-5 mb-4">
+        <View className="px-5 mb-5">
           <View className="flex-row gap-3">
             {/* 未送信 */}
-            <View className="flex-1 bg-amber-900/30 rounded-xl p-4">
+            <View
+              className="flex-1 bg-white rounded-2xl p-4"
+              style={{
+                shadowColor: '#f59e0b',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+                elevation: 3,
+              }}
+            >
               <View className="flex-row items-center mb-2">
-                <Clock size={16} color="#f59e0b" />
-                <Text className="text-sm text-amber-400 ml-1 font-medium">未送信</Text>
+                <View className="w-6 h-6 rounded-full bg-amber-100 items-center justify-center">
+                  <Clock size={14} color="#f59e0b" />
+                </View>
+                <Text className="text-sm text-amber-600 ml-2 font-medium">未送信</Text>
               </View>
-              <Text className="text-3xl font-bold text-amber-400">{unsyncedEntries.length}</Text>
-              <Text className="text-xs text-amber-400/70">件</Text>
+              <Text className="text-3xl font-bold text-amber-500">{unsyncedEntries.length}</Text>
+              <Text className="text-xs text-slate-400 mt-0.5">件</Text>
             </View>
 
             {/* 送信済み */}
-            <View className="flex-1 bg-green-900/30 rounded-xl p-4">
+            <View
+              className="flex-1 bg-white rounded-2xl p-4"
+              style={{
+                shadowColor: '#22c55e',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+                elevation: 3,
+              }}
+            >
               <View className="flex-row items-center mb-2">
-                <CheckCircle2 size={16} color="#22c55e" />
-                <Text className="text-sm text-green-400 ml-1 font-medium">送信済み</Text>
+                <View className="w-6 h-6 rounded-full bg-green-100 items-center justify-center">
+                  <CheckCircle2 size={14} color="#22c55e" />
+                </View>
+                <Text className="text-sm text-green-600 ml-2 font-medium">送信済み</Text>
               </View>
-              <Text className="text-3xl font-bold text-green-400">{syncedCount}</Text>
-              <Text className="text-xs text-green-400/70">件</Text>
+              <Text className="text-3xl font-bold text-green-500">{syncedCount}</Text>
+              <Text className="text-xs text-slate-400 mt-0.5">件</Text>
             </View>
           </View>
         </View>
@@ -212,27 +234,38 @@ export default function SyncScreen() {
         {/* 未送信ジャーナルデータセクション */}
         <View className="px-5 mb-6">
           <View className="flex-row items-center mb-3">
-            <BookOpen size={20} color="#f59e0b" />
-            <Text className="text-car-lg font-semibold text-text-primary ml-2">未送信の記録</Text>
+            <BookOpen size={20} color="#3b82f6" />
+            <Text className="text-lg font-semibold text-slate-800 ml-2">未送信の記録</Text>
             {hasUnsyncedEntries && (
-              <View className="bg-amber-600/30 px-2 py-0.5 rounded-full ml-2">
-                <Text className="text-car-sm text-warning">{unsyncedEntries.length}件</Text>
+              <View className="bg-amber-100 px-2.5 py-1 rounded-full ml-2">
+                <Text className="text-xs font-semibold text-amber-600">
+                  {unsyncedEntries.length}件
+                </Text>
               </View>
             )}
           </View>
 
           {hasUnsyncedEntries ? (
-            <View className="bg-surface-elevated rounded-2xl p-4 border border-slate-700">
+            <View
+              className="bg-white rounded-2xl p-4"
+              style={{
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+                elevation: 3,
+              }}
+            >
               {/* 統計 */}
-              <View className="flex-row mb-4">
+              <View className="flex-row mb-4 pb-4 border-b border-slate-100">
                 <View className="flex-1 items-center">
-                  <Text className="text-car-xl font-bold text-text-primary">
+                  <Text className="text-2xl font-bold text-slate-800">
                     {unsyncedEntries.length}
                   </Text>
-                  <Text className="text-car-sm text-text-muted">未送信数</Text>
+                  <Text className="text-xs text-slate-400 mt-0.5">未送信数</Text>
                 </View>
-                <View className="flex-1 items-center">
-                  <Text className="text-car-xl font-bold text-warning">
+                <View className="flex-1 items-center border-l border-r border-slate-100">
+                  <Text className="text-2xl font-bold text-amber-500">
                     {unsyncedEntries.length > 0
                       ? (
                           unsyncedEntries.reduce((sum, e) => sum + e.rating, 0) /
@@ -240,47 +273,67 @@ export default function SyncScreen() {
                         ).toFixed(1)
                       : '-'}
                   </Text>
-                  <Text className="text-car-sm text-text-muted">平均評価</Text>
+                  <Text className="text-xs text-slate-400 mt-0.5">平均評価</Text>
                 </View>
                 <View className="flex-1 items-center">
-                  <Text className="text-car-xl font-bold text-success">
+                  <Text className="text-2xl font-bold text-blue-500">
                     {new Set(unsyncedEntries.map((e) => e.address.prefecture)).size}
                   </Text>
-                  <Text className="text-car-sm text-text-muted">訪問地域</Text>
+                  <Text className="text-xs text-slate-400 mt-0.5">訪問地域</Text>
                 </View>
               </View>
 
               {/* 未送信エントリー一覧（最大5件） */}
-              <Text className="text-car-sm font-medium text-text-secondary mb-2">
-                送信予定の記録
-              </Text>
+              <Text className="text-sm font-medium text-slate-500 mb-2">送信予定の記録</Text>
               {unsyncedEntries.slice(0, 5).map((entry) => (
                 <JournalEntryItem key={entry.id} entry={entry} />
               ))}
 
               {unsyncedEntries.length > 5 && (
-                <Text className="text-car-sm text-text-muted text-center mt-2">
+                <Text className="text-sm text-slate-400 text-center mt-2">
                   他 {unsyncedEntries.length - 5} 件の未送信記録
                 </Text>
               )}
             </View>
           ) : totalEntries > 0 ? (
-            <View className="bg-green-900/20 rounded-2xl p-6 items-center border border-green-700/30">
-              <CheckCircle2 size={48} color="#22c55e" />
-              <Text className="text-success mt-4 text-center font-semibold text-car-base">
+            <View
+              className="bg-green-50 rounded-2xl p-6 items-center border border-green-100"
+              style={{
+                shadowColor: '#22c55e',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 8,
+                elevation: 2,
+              }}
+            >
+              <View className="w-16 h-16 rounded-full bg-green-100 items-center justify-center mb-3">
+                <CheckCircle2 size={32} color="#22c55e" />
+              </View>
+              <Text className="text-green-600 font-semibold text-base text-center">
                 すべての記録が送信済みです
               </Text>
-              <Text className="text-text-muted text-car-sm mt-1 text-center">
+              <Text className="text-slate-400 text-sm mt-1 text-center">
                 合計 {syncedCount} 件の記録が車載器に送信されています
               </Text>
             </View>
           ) : (
-            <View className="bg-surface-elevated rounded-2xl p-8 items-center border border-slate-700">
-              <BookOpen size={48} color="#64748b" />
-              <Text className="text-text-secondary mt-4 text-center text-car-base">
+            <View
+              className="bg-white rounded-2xl p-8 items-center"
+              style={{
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+                elevation: 3,
+              }}
+            >
+              <View className="w-16 h-16 rounded-full bg-slate-100 items-center justify-center mb-3">
+                <BookOpen size={32} color="#94a3b8" />
+              </View>
+              <Text className="text-slate-700 font-semibold text-base text-center">
                 ジャーナル記録がありません
               </Text>
-              <Text className="text-text-muted text-car-sm mt-1 text-center">
+              <Text className="text-slate-400 text-sm mt-1 text-center">
                 「ジャーナル」タブで訪問した場所を記録してください
               </Text>
             </View>
@@ -288,18 +341,16 @@ export default function SyncScreen() {
 
           {/* 最終同期日時 */}
           {lastSyncedDisplay && (
-            <View className="flex-row items-center justify-center mt-3">
-              <Calendar size={14} color="#64748b" />
-              <Text className="text-car-sm text-text-muted ml-1">
-                最終同期: {lastSyncedDisplay}
-              </Text>
+            <View className="flex-row items-center justify-center mt-4">
+              <Calendar size={14} color="#94a3b8" />
+              <Text className="text-sm text-slate-400 ml-1">最終同期: {lastSyncedDisplay}</Text>
             </View>
           )}
         </View>
 
         {/* 接続・転送セクション */}
         <View className="px-5 mb-6">
-          <Text className="text-car-lg font-semibold text-text-primary mb-3">車載器へ送信</Text>
+          <Text className="text-lg font-semibold text-slate-800 mb-3">車載器へ送信</Text>
 
           <ConnectionStatusCard
             status={connectionStatus}
@@ -319,13 +370,13 @@ export default function SyncScreen() {
           />
 
           {!hasUnsyncedEntries && totalEntries > 0 && (
-            <Text className="text-car-sm text-success text-center mt-3">
+            <Text className="text-sm text-green-500 text-center mt-3">
               すべてのジャーナルが送信済みです
             </Text>
           )}
 
           {totalEntries === 0 && (
-            <Text className="text-car-sm text-text-muted text-center mt-3">
+            <Text className="text-sm text-slate-400 text-center mt-3">
               ジャーナルに記録を追加してから送信してください
             </Text>
           )}

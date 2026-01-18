@@ -75,6 +75,8 @@ export class AudioPlayerService {
   private isProcessingQueue = false;
   private itemCounter = 0;
   private tempDir: Directory;
+  /** 再生中のステータスコールバックを有効にするかどうか */
+  private isStatusCallbackActive = false;
 
   constructor(callbacks: PlayerCallbacks = {}) {
     this.callbacks = callbacks;
@@ -198,6 +200,9 @@ export class AudioPlayerService {
 
       console.log(`[AudioPlayer] Playing: ${item.id}, File size: ${bytes.byteLength} bytes`);
 
+      // ステータスコールバックを有効化
+      this.isStatusCallbackActive = true;
+
       // 音声を読み込んで再生
       const { sound } = await Audio.Sound.createAsync(
         { uri: tempFile.uri },
@@ -229,6 +234,9 @@ export class AudioPlayerService {
           resolve(); // タイムアウト時は次に進む
         }, 30000);
       });
+
+      // ステータスコールバックを無効化
+      this.isStatusCallbackActive = false;
 
       // クリーンアップ
       await sound.unloadAsync();
@@ -263,6 +271,11 @@ export class AudioPlayerService {
    * 再生ステータス更新ハンドラ
    */
   private onPlaybackStatusUpdate(status: AVPlaybackStatus): void {
+    // コールバックが無効な場合はスキップ
+    if (!this.isStatusCallbackActive) {
+      return;
+    }
+
     if (!status.isLoaded) {
       if (status.error) {
         console.error('[AudioPlayer] Playback error:', status.error);
@@ -270,13 +283,15 @@ export class AudioPlayerService {
       return;
     }
 
-    console.log(
-      `[AudioPlayer] Playback status: ` +
-        `position=${status.positionMillis}ms, ` +
-        `duration=${status.durationMillis ?? 'N/A'}ms, ` +
-        `isPlaying=${status.isPlaying}, ` +
-        `didFinish=${status.didJustFinish}`
-    );
+    // 再生中または完了時のみログを出力（ログスパム防止）
+    if (status.isPlaying || status.didJustFinish) {
+      console.log(
+        `[AudioPlayer] Playback: ` +
+          `${Math.round(status.positionMillis / 1000)}s / ` +
+          `${Math.round((status.durationMillis ?? 0) / 1000)}s` +
+          (status.didJustFinish ? ' [FINISHED]' : '')
+      );
+    }
   }
 
   /**
@@ -284,6 +299,9 @@ export class AudioPlayerService {
    */
   async stop(): Promise<void> {
     console.log('[AudioPlayer] Stopping playback');
+
+    // ステータスコールバックを無効化
+    this.isStatusCallbackActive = false;
 
     // キューをクリア
     this.queue = [];

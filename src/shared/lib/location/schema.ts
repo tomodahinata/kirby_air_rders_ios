@@ -93,7 +93,6 @@ export const initialMetadataSchema = z.object({
           .optional(),
       })
       .nullable(), // 取得失敗時はnull
-    sessionId: z.string().uuid().optional(),
   }),
 });
 
