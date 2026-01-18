@@ -30,7 +30,7 @@ function HeaderComponent({ title, showLanguageToggle = true, rightElement }: Hea
               <Pressable
                 onPress={() => toggleLanguage('EN')}
                 accessibilityRole="button"
-                accessibilityLabel="Switch to English"
+                accessibilityLabel="英語に切り替え"
                 accessibilityState={{ selected: language === 'EN' }}
                 style={({ pressed }): StyleProp<ViewStyle> => [
                   {
@@ -44,7 +44,7 @@ function HeaderComponent({ title, showLanguageToggle = true, rightElement }: Hea
                     language === 'EN' ? 'text-primary-400' : 'text-text-muted'
                   }`}
                 >
-                  EN
+                  英語
                 </Text>
               </Pressable>
 
@@ -53,7 +53,7 @@ function HeaderComponent({ title, showLanguageToggle = true, rightElement }: Hea
               <Pressable
                 onPress={() => toggleLanguage('JP')}
                 accessibilityRole="button"
-                accessibilityLabel="Switch to Japanese"
+                accessibilityLabel="日本語に切り替え"
                 accessibilityState={{ selected: language === 'JP' }}
                 style={({ pressed }): StyleProp<ViewStyle> => [
                   {
@@ -67,7 +67,7 @@ function HeaderComponent({ title, showLanguageToggle = true, rightElement }: Hea
                     language === 'JP' ? 'text-primary-400' : 'text-text-muted'
                   }`}
                 >
-                  JP
+                  日本語
                 </Text>
               </Pressable>
             </View>

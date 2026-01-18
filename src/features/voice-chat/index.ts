@@ -5,6 +5,9 @@ export * from './types';
 export { ConnectionBadge } from './components/ConnectionBadge';
 export { ConversationItem } from './components/ConversationItem';
 export { VoiceControlBar } from './components/VoiceControlBar';
+export { VoiceInputScreen } from './components/VoiceInputScreen';
+export { TranscriptDisplay } from './components/TranscriptDisplay';
+export { AgentConsultBar } from './components/AgentConsultBar';
 
 // Services
 export {

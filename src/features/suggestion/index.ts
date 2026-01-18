@@ -1,5 +1,8 @@
 // Components
 export { AISuggestionCard } from './components/AISuggestionCard';
+export { AISuggestionPopup } from './components/AISuggestionPopup';
+export { MiniSuggestionCard } from './components/MiniSuggestionCard';
+export { PlaceDetailSheet } from './components/PlaceDetailSheet';
 
 // API hooks
 export {

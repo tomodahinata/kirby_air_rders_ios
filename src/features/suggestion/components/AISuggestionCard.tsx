@@ -90,7 +90,7 @@ function AISuggestionCardComponent({
         {source === 'web' && (
           <View className="flex-row items-center gap-1">
             <Globe size={14} color="#94a3b8" />
-            <Text className="text-car-sm text-text-muted">Web</Text>
+            <Text className="text-car-sm text-text-muted">ウェブ</Text>
           </View>
         )}
       </View>

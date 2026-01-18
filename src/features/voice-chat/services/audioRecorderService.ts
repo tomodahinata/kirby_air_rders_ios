@@ -24,8 +24,10 @@ export const RECORDING_CONFIG = {
   numberOfChannels: 1,
   bitDepthHint: 16,
   format: 'pcm' as const,
-  /** チャンク送信間隔 (ms) */
-  chunkIntervalMs: 250,
+  /** ストリーミングモードでのセグメント間隔 (ms) - 短すぎると音が途切れる */
+  streamingSegmentIntervalMs: 1000,
+  /** UIフィードバック用のメータリング更新間隔 (ms) */
+  meteringIntervalMs: 100,
 };
 
 /**
@@ -67,14 +69,18 @@ export interface RecordingState {
   isPaused: boolean;
   durationMs: number;
   metering: number | null;
+  /** ストリーミングモードかどうか */
+  isStreaming: boolean;
+  /** 送信済みセグメント数 */
+  segmentsSent: number;
 }
 
 /**
  * 録音コールバック
  */
 export interface RecordingCallbacks {
-  /** 録音チャンクが準備できた時（Base64エンコード済み） */
-  onAudioChunk?: (base64Data: string, durationMs: number) => void;
+  /** 録音チャンクが準備できた時（Base64エンコード済み） - ストリーミングモードで使用 */
+  onAudioChunk?: (base64Data: string, segmentNumber: number, durationMs: number) => void;
   /** 録音状態が変化した時 */
   onStateChange?: (state: RecordingState) => void;
   /** エラー発生時 */
@@ -88,24 +94,83 @@ export interface RecordingCallbacks {
 export class AudioRecorderService {
   private recording: Audio.Recording | null = null;
   private callbacks: RecordingCallbacks;
-  private chunkTimer: ReturnType<typeof setInterval> | null = null;
+  private meteringTimer: ReturnType<typeof setInterval> | null = null;
+  private streamingTimer: ReturnType<typeof setTimeout> | null = null;
   private state: RecordingState = {
     isRecording: false,
     isPaused: false,
     durationMs: 0,
     metering: null,
+    isStreaming: false,
+    segmentsSent: 0,
   };
-  private lastChunkTime = 0;
+
+  /** start()の重複呼び出し防止用 */
+  private isStarting = false;
+  /** ストリーミングモードかどうか */
+  private isStreamingMode = false;
+  /** 現在のセグメント番号 */
+  private segmentNumber = 0;
+  /** 合計録音時間 (ms) */
+  private totalDurationMs = 0;
+  /** セグメント処理中かどうか */
+  private isProcessingSegment = false;
+  /** ストリーミング停止リクエスト中かどうか */
+  private stopRequested = false;
 
   constructor(callbacks: RecordingCallbacks = {}) {
     this.callbacks = callbacks;
   }
 
   /**
-   * 録音を開始
+   * 録音を開始（従来モード - 停止時に全データを返す）
    */
   async start(): Promise<void> {
+    await this.startInternal(false);
+  }
+
+  /**
+   * ストリーミングモードで録音を開始
+   * 一定間隔でonAudioChunkコールバックを呼び出し、音声チャンクを送信
+   */
+  async startStreaming(): Promise<void> {
+    await this.startInternal(true);
+  }
+
+  /**
+   * 録音開始の内部実装
+   */
+  private async startInternal(streamingMode: boolean): Promise<void> {
+    // 重複呼び出し防止
+    if (this.isStarting) {
+      console.warn('[AudioRecorder] start() already in progress, skipping');
+      return;
+    }
+
+    // 既に録音中の場合はスキップ
+    if (this.state.isRecording) {
+      console.warn('[AudioRecorder] Already recording, skipping');
+      return;
+    }
+
+    this.isStarting = true;
+    this.isStreamingMode = streamingMode;
+    this.segmentNumber = 0;
+    this.totalDurationMs = 0;
+    this.stopRequested = false;
+
     try {
+      // 既存の録音オブジェクトがある場合はクリーンアップ
+      if (this.recording) {
+        console.log('[AudioRecorder] Cleaning up existing recording before start');
+        try {
+          await this.recording.stopAndUnloadAsync();
+        } catch {
+          // 既に停止している場合は無視
+        }
+        this.recording = null;
+      }
+
       // Audio セッションを設定
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
@@ -122,58 +187,210 @@ export class AudioRecorderService {
         throw new Error('マイクの権限が許可されていません');
       }
 
-      // 録音オブジェクトを作成
-      this.recording = new Audio.Recording();
-      await this.recording.prepareToRecordAsync(RECORDING_OPTIONS);
-
-      console.log('[AudioRecorder] Recording prepared');
+      console.log(`[AudioRecorder] Starting in ${streamingMode ? 'STREAMING' : 'NORMAL'} mode`);
       console.log(
         `[AudioRecorder] Config: ${RECORDING_CONFIG.sampleRate}Hz, ${RECORDING_CONFIG.numberOfChannels}ch`
       );
 
-      // ステータス更新コールバックを設定
-      this.recording.setOnRecordingStatusUpdate((status) => {
-        if (status.isRecording) {
-          this.state = {
-            isRecording: true,
-            isPaused: false,
-            durationMs: status.durationMillis,
-            metering: status.metering ?? null,
-          };
-          this.callbacks.onStateChange?.(this.state);
-        }
+      if (streamingMode) {
+        // ストリーミングモード: 最初のセグメントを開始
+        await this.startNewSegment();
+        // メータリング用タイマーを開始
+        this.startMeteringTimer();
+      } else {
+        // 通常モード: 単一の録音を開始
+        await this.startSingleRecording();
+      }
+
+      this.updateState({
+        isRecording: true,
+        isStreaming: streamingMode,
+        segmentsSent: 0,
       });
-
-      // 録音開始
-      await this.recording.startAsync();
-      this.lastChunkTime = Date.now();
-
-      console.log('[AudioRecorder] Recording started');
-
-      // チャンク送信タイマーを開始
-      this.startChunkTimer();
-
-      this.updateState({ isRecording: true });
     } catch (error) {
       console.error('[AudioRecorder] Start error:', error);
       this.callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
       throw error;
+    } finally {
+      this.isStarting = false;
     }
   }
 
   /**
-   * 録音を停止し、最終チャンクを送信
+   * 通常モードの録音開始
+   */
+  private async startSingleRecording(): Promise<void> {
+    this.recording = new Audio.Recording();
+    await this.recording.prepareToRecordAsync(RECORDING_OPTIONS);
+
+    // ステータス更新コールバックを設定
+    this.recording.setOnRecordingStatusUpdate((status) => {
+      if (status.isRecording) {
+        this.state = {
+          ...this.state,
+          isRecording: true,
+          isPaused: false,
+          durationMs: status.durationMillis,
+          metering: status.metering ?? null,
+        };
+        this.callbacks.onStateChange?.(this.state);
+      }
+    });
+
+    await this.recording.startAsync();
+    console.log('[AudioRecorder] Recording started (normal mode)');
+  }
+
+  /**
+   * ストリーミングモード: 新しいセグメントを開始
+   */
+  private async startNewSegment(): Promise<void> {
+    if (this.stopRequested) {
+      console.log('[AudioRecorder] Stop requested, not starting new segment');
+      return;
+    }
+
+    try {
+      // iOSでは録音停止後にオーディオモードがリセットされるため、
+      // 新しいセグメント開始前に再度設定が必要
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+        interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+
+      this.recording = new Audio.Recording();
+      await this.recording.prepareToRecordAsync(RECORDING_OPTIONS);
+      await this.recording.startAsync();
+
+      console.log(`[AudioRecorder] Segment ${this.segmentNumber} started`);
+
+      // 次のセグメント処理をスケジュール
+      this.streamingTimer = setTimeout(() => {
+        this.processSegment();
+      }, RECORDING_CONFIG.streamingSegmentIntervalMs);
+    } catch (error) {
+      console.error('[AudioRecorder] Failed to start new segment:', error);
+      this.callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  /**
+   * ストリーミングモード: 現在のセグメントを処理して次を開始
+   */
+  private async processSegment(): Promise<void> {
+    if (this.isProcessingSegment || !this.recording) {
+      return;
+    }
+
+    this.isProcessingSegment = true;
+
+    try {
+      // 現在の録音を停止
+      await this.recording.stopAndUnloadAsync();
+      const uri = this.recording.getURI();
+
+      if (uri) {
+        // ファイルからデータを読み取り
+        const file = new File(uri);
+        const arrayBuffer = await file.arrayBuffer();
+        const base64 = arrayBufferToBase64(arrayBuffer);
+        const segmentDurationMs = Math.round(
+          (arrayBuffer.byteLength / (RECORDING_CONFIG.sampleRate * 2)) * 1000
+        );
+
+        this.totalDurationMs += segmentDurationMs;
+
+        const fileSizeKB = Math.round(arrayBuffer.byteLength / 1024);
+        console.log(
+          `[AudioRecorder] Segment ${this.segmentNumber} complete: ${fileSizeKB}KB, ` +
+            `${segmentDurationMs}ms, total: ${this.totalDurationMs}ms`
+        );
+
+        // コールバックで音声チャンクを送信
+        this.callbacks.onAudioChunk?.(base64, this.segmentNumber, segmentDurationMs);
+
+        // ファイルを削除
+        try {
+          await file.delete();
+        } catch {
+          // 無視
+        }
+
+        this.segmentNumber++;
+        this.updateState({
+          segmentsSent: this.segmentNumber,
+          durationMs: this.totalDurationMs,
+        });
+      }
+
+      this.recording = null;
+
+      // 停止リクエストがなければ次のセグメントを開始
+      if (!this.stopRequested) {
+        await this.startNewSegment();
+      } else {
+        console.log('[AudioRecorder] Streaming stopped after segment processing');
+        await this.finalizeStreaming();
+      }
+    } catch (error) {
+      console.error('[AudioRecorder] Segment processing error:', error);
+      this.callbacks.onError?.(error instanceof Error ? error : new Error(String(error)));
+    } finally {
+      this.isProcessingSegment = false;
+    }
+  }
+
+  /**
+   * ストリーミング終了処理
+   */
+  private async finalizeStreaming(): Promise<void> {
+    this.stopMeteringTimer();
+    this.stopStreamingTimer();
+
+    // Audio セッションをリセット
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+      interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+    });
+
+    this.updateState({
+      isRecording: false,
+      isStreaming: false,
+      durationMs: 0,
+      metering: null,
+    });
+
+    console.log(
+      `[AudioRecorder] Streaming finalized. Total segments: ${this.segmentNumber}, ` +
+        `Total duration: ${this.totalDurationMs}ms`
+    );
+  }
+
+  /**
+   * 録音を停止（従来モード用）
+   * @returns 録音した音声データ（Base64）
    */
   async stop(): Promise<string | null> {
+    if (this.isStreamingMode) {
+      // ストリーミングモードの場合はstopStreamingを使用
+      await this.stopStreaming();
+      return null;
+    }
+
     if (!this.recording) {
       console.warn('[AudioRecorder] No active recording to stop');
       return null;
     }
 
     try {
-      // タイマーを停止
-      this.stopChunkTimer();
-
       // 録音を停止
       await this.recording.stopAndUnloadAsync();
       console.log('[AudioRecorder] Recording stopped');
@@ -227,14 +444,90 @@ export class AudioRecorderService {
   }
 
   /**
-   * 録音をキャンセル
+   * ストリーミングモードの録音を停止
+   * 現在のセグメントの処理を待って終了
    */
-  async cancel(): Promise<void> {
-    if (!this.recording) {
+  async stopStreaming(): Promise<void> {
+    if (!this.isStreamingMode) {
+      console.warn('[AudioRecorder] Not in streaming mode');
       return;
     }
 
-    this.stopChunkTimer();
+    console.log('[AudioRecorder] Stopping streaming...');
+    this.stopRequested = true;
+    this.stopStreamingTimer();
+
+    // 現在録音中のセグメントがあれば最終チャンクとして処理
+    if (this.recording && !this.isProcessingSegment) {
+      try {
+        await this.recording.stopAndUnloadAsync();
+        const uri = this.recording.getURI();
+
+        if (uri) {
+          const file = new File(uri);
+          const arrayBuffer = await file.arrayBuffer();
+          const base64 = arrayBufferToBase64(arrayBuffer);
+          const segmentDurationMs = Math.round(
+            (arrayBuffer.byteLength / (RECORDING_CONFIG.sampleRate * 2)) * 1000
+          );
+
+          this.totalDurationMs += segmentDurationMs;
+
+          const fileSizeKB = Math.round(arrayBuffer.byteLength / 1024);
+          console.log(
+            `[AudioRecorder] Final segment ${this.segmentNumber}: ${fileSizeKB}KB, ` +
+              `${segmentDurationMs}ms`
+          );
+
+          // 最終チャンクを送信
+          this.callbacks.onAudioChunk?.(base64, this.segmentNumber, segmentDurationMs);
+
+          try {
+            await file.delete();
+          } catch {
+            // 無視
+          }
+
+          this.segmentNumber++;
+        }
+
+        this.recording = null;
+      } catch (error) {
+        console.error('[AudioRecorder] Error stopping final segment:', error);
+      }
+    }
+
+    // セグメント処理中の場合は終了を待つ
+    if (this.isProcessingSegment) {
+      console.log('[AudioRecorder] Waiting for segment processing to complete...');
+      // 処理完了を待つ（最大3秒）
+      let waitCount = 0;
+      while (this.isProcessingSegment && waitCount < 30) {
+        await new Promise((r) => setTimeout(r, 100));
+        waitCount++;
+      }
+    }
+
+    await this.finalizeStreaming();
+  }
+
+  /**
+   * 録音をキャンセル
+   */
+  async cancel(): Promise<void> {
+    this.stopRequested = true;
+    this.stopMeteringTimer();
+    this.stopStreamingTimer();
+
+    if (!this.recording) {
+      this.updateState({
+        isRecording: false,
+        isStreaming: false,
+        durationMs: 0,
+        metering: null,
+      });
+      return;
+    }
 
     try {
       await this.recording.stopAndUnloadAsync();
@@ -252,7 +545,13 @@ export class AudioRecorderService {
     }
 
     this.recording = null;
-    this.updateState({ isRecording: false, durationMs: 0, metering: null });
+    this.isStreamingMode = false;
+    this.updateState({
+      isRecording: false,
+      isStreaming: false,
+      durationMs: 0,
+      metering: null,
+    });
     console.log('[AudioRecorder] Recording cancelled');
   }
 
@@ -271,6 +570,13 @@ export class AudioRecorderService {
   }
 
   /**
+   * ストリーミングモードかどうか
+   */
+  isStreaming(): boolean {
+    return this.state.isStreaming;
+  }
+
+  /**
    * コールバックを更新
    */
   setCallbacks(callbacks: RecordingCallbacks): void {
@@ -278,14 +584,12 @@ export class AudioRecorderService {
   }
 
   /**
-   * チャンク送信タイマーを開始
-   * 注意: expo-avは録音中にファイルアクセスできないため、
-   * このタイマーは主にUIフィードバック用のメータリング更新に使用
+   * メータリング用タイマーを開始（ストリーミングモード用）
    */
-  private startChunkTimer(): void {
-    this.stopChunkTimer();
+  private startMeteringTimer(): void {
+    this.stopMeteringTimer();
 
-    this.chunkTimer = setInterval(async () => {
+    this.meteringTimer = setInterval(async () => {
       if (!this.recording || !this.state.isRecording) {
         return;
       }
@@ -293,31 +597,35 @@ export class AudioRecorderService {
       try {
         const status = await this.recording.getStatusAsync();
         if (status.isRecording) {
-          const currentTime = Date.now();
-          const chunkDuration = currentTime - this.lastChunkTime;
-
-          // デバッグ: メータリング情報をログ
-          console.log(
-            `[AudioRecorder] Recording... Duration: ${status.durationMillis}ms, ` +
-              `Metering: ${status.metering?.toFixed(2) ?? 'N/A'}dB, ` +
-              `Chunk interval: ${chunkDuration}ms`
-          );
-
-          this.lastChunkTime = currentTime;
+          this.state = {
+            ...this.state,
+            metering: status.metering ?? null,
+          };
+          this.callbacks.onStateChange?.(this.state);
         }
-      } catch (error) {
-        console.error('[AudioRecorder] Chunk timer error:', error);
+      } catch {
+        // エラーは無視（セグメント切り替え中など）
       }
-    }, RECORDING_CONFIG.chunkIntervalMs);
+    }, RECORDING_CONFIG.meteringIntervalMs);
   }
 
   /**
-   * チャンク送信タイマーを停止
+   * メータリング用タイマーを停止
    */
-  private stopChunkTimer(): void {
-    if (this.chunkTimer) {
-      clearInterval(this.chunkTimer);
-      this.chunkTimer = null;
+  private stopMeteringTimer(): void {
+    if (this.meteringTimer) {
+      clearInterval(this.meteringTimer);
+      this.meteringTimer = null;
+    }
+  }
+
+  /**
+   * ストリーミング用タイマーを停止
+   */
+  private stopStreamingTimer(): void {
+    if (this.streamingTimer) {
+      clearTimeout(this.streamingTimer);
+      this.streamingTimer = null;
     }
   }
 

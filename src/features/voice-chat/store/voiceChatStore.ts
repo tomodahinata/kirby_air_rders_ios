@@ -6,6 +6,7 @@ import type {
   ConversationState,
   ConversationEntry,
   VoiceChatState,
+  DestinationPayload,
 } from '../types';
 
 /**
@@ -26,7 +27,6 @@ interface VoiceChatActions {
   // 接続状態
   setConnectionState: (state: ConnectionState) => void;
   setConversationState: (state: ConversationState) => void;
-  setSessionId: (id: string | null) => void;
 
   // 会話履歴
   addUserMessage: (content: string) => void;
@@ -36,6 +36,10 @@ interface VoiceChatActions {
   // 転写
   setCurrentTranscript: (text: string, isPartial: boolean) => void;
   clearTranscript: () => void;
+
+  // 目的地
+  setDestination: (destination: DestinationPayload | null) => void;
+  clearDestination: () => void;
 
   // エラー
   setError: (error: string | null) => void;
@@ -54,10 +58,10 @@ interface VoiceChatActions {
 const initialState: VoiceChatState = {
   connectionState: 'disconnected',
   conversationState: 'idle',
-  sessionId: null,
   conversationHistory: [],
   currentTranscript: '',
   isPartialTranscript: false,
+  destination: null,
   error: null,
   lastPingAt: null,
   latencyMs: null,
@@ -74,7 +78,6 @@ export const useVoiceChatStore = create<VoiceChatState & VoiceChatActions>()(
       // 接続状態
       setConnectionState: (connectionState) => set({ connectionState }),
       setConversationState: (conversationState) => set({ conversationState }),
-      setSessionId: (sessionId) => set({ sessionId }),
 
       // 会話履歴
       addUserMessage: (content) =>
@@ -119,6 +122,10 @@ export const useVoiceChatStore = create<VoiceChatState & VoiceChatActions>()(
           isPartialTranscript: false,
         }),
 
+      // 目的地
+      setDestination: (destination) => set({ destination }),
+      clearDestination: () => set({ destination: null }),
+
       // エラー
       setError: (error) => set({ error }),
       clearError: () => set({ error: null }),
@@ -146,4 +153,5 @@ export const selectIsConnected = (state: VoiceChatState) => state.connectionStat
 export const selectIsListening = (state: VoiceChatState) => state.conversationState === 'listening';
 export const selectConversationHistory = (state: VoiceChatState) => state.conversationHistory;
 export const selectCurrentTranscript = (state: VoiceChatState) => state.currentTranscript;
+export const selectDestination = (state: VoiceChatState) => state.destination;
 export const selectError = (state: VoiceChatState) => state.error;

@@ -1,0 +1,79 @@
+module.exports = {
+  expo: {
+    name: 'ai_car',
+    slug: 'ai_car',
+    version: '1.0.0',
+    orientation: 'portrait',
+    icon: './assets/images/icon.png',
+    scheme: 'aicar',
+    userInterfaceStyle: 'automatic',
+    newArchEnabled: true,
+    splash: {
+      image: './assets/images/splash-icon.png',
+      resizeMode: 'contain',
+      backgroundColor: '#ffffff',
+    },
+    ios: {
+      supportsTablet: true,
+      bundleIdentifier: 'com.llmnavi.aicar',
+      config: {
+        googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+      },
+      infoPlist: {
+        NSHealthShareUsageDescription:
+          'あなたのヘルスケアデータ（心拍数、歩数、睡眠）を分析し、最適な目的地を提案するために使用します。',
+        NSHealthUpdateUsageDescription: 'ヘルスケアデータの更新は行いません。',
+        NSCalendarsUsageDescription: 'カレンダーの予定を確認し、目的地の提案に活用します。',
+        NSCalendarsFullAccessUsageDescription:
+          'カレンダーの予定を確認し、目的地の提案に活用します。',
+        NSLocationWhenInUseUsageDescription:
+          'あなたの現在地を取得し、最適なナビゲーションルートの提案に使用します。',
+        NSMicrophoneUsageDescription:
+          '音声入力による会話機能を使用するためにマイクへのアクセスが必要です。',
+      },
+      entitlements: {
+        'com.apple.developer.healthkit': true,
+        'com.apple.developer.healthkit.access': ['health-records'],
+      },
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: './assets/images/adaptive-icon.png',
+        backgroundColor: '#ffffff',
+      },
+      edgeToEdgeEnabled: true,
+      predictiveBackGestureEnabled: false,
+      permissions: ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION', 'RECORD_AUDIO'],
+      config: {
+        googleMaps: {
+          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+        },
+      },
+    },
+    web: {
+      bundler: 'metro',
+      output: 'static',
+      favicon: './assets/images/favicon.png',
+    },
+    plugins: [
+      'expo-router',
+      [
+        'expo-calendar',
+        {
+          calendarPermission: 'カレンダーの予定を確認し、目的地の提案に活用します。',
+        },
+      ],
+      [
+        'expo-location',
+        {
+          locationWhenInUsePermission:
+            'あなたの現在地を取得し、最適なナビゲーションルートの提案に使用します。',
+        },
+      ],
+      '@react-native-community/datetimepicker',
+    ],
+    experiments: {
+      typedRoutes: true,
+    },
+  },
+};

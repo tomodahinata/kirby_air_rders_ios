@@ -1,22 +1,22 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
 import {
-  type LocationData,
-  type LocationState,
-  type LocationPermissionStatus,
-  type LocationOptions,
-  type InitialMetadata,
-  DEFAULT_LOCATION_OPTIONS,
-} from './schema';
-import {
+  checkLocationPermission,
   getCurrentLocation,
   getCurrentLocationSafe,
-  checkLocationPermission,
-  requestLocationPermission,
   LocationError,
+  requestLocationPermission,
 } from './locationService';
+import {
+  type InitialMetadata,
+  type LocationData,
+  type LocationOptions,
+  type LocationPermissionStatus,
+  type LocationState,
+  DEFAULT_LOCATION_OPTIONS,
+} from './schema';
 
 /**
  * 位置情報ストアのアクション
@@ -129,7 +129,7 @@ export const useLocationStore = create<LocationState & LocationActions>()(
  * コンポーネントで使用するための便利なインターフェース
  */
 export function useLocation(options?: LocationOptions) {
-  const opts = { ...DEFAULT_LOCATION_OPTIONS, ...options };
+  const opts = useMemo(() => ({ ...DEFAULT_LOCATION_OPTIONS, ...options }), [options]);
 
   // ストアから状態とアクションを取得
   const location = useLocationStore((s) => s.location);
@@ -183,44 +183,39 @@ export function useLocation(options?: LocationOptions) {
   /**
    * 位置情報をWebSocket送信用メタデータに変換
    */
-  const toMetadata = useCallback(
-    (sessionId?: string): InitialMetadata => {
-      const now = new Date().toISOString();
+  const toMetadata = useCallback((): InitialMetadata => {
+    const now = new Date().toISOString();
 
-      if (!location) {
-        return {
-          type: 'metadata',
-          timestamp: now,
-          payload: {
-            location: null,
-            sessionId,
-          },
-        };
-      }
-
+    if (!location) {
       return {
         type: 'metadata',
         timestamp: now,
         payload: {
-          location: {
-            latitude: location.coordinates.latitude,
-            longitude: location.coordinates.longitude,
-            accuracy: location.coordinates.accuracy,
-            altitude: location.coordinates.altitude,
-            address: location.address
-              ? {
-                  city: location.address.city,
-                  region: location.address.region,
-                  country: location.address.country,
-                }
-              : null,
-          },
-          sessionId,
+          location: null,
         },
       };
-    },
-    [location]
-  );
+    }
+
+    return {
+      type: 'metadata',
+      timestamp: now,
+      payload: {
+        location: {
+          latitude: location.coordinates.latitude,
+          longitude: location.coordinates.longitude,
+          accuracy: location.coordinates.accuracy,
+          altitude: location.coordinates.altitude,
+          address: location.address
+            ? {
+                city: location.address.city,
+                region: location.address.region,
+                country: location.address.country,
+              }
+            : null,
+        },
+      },
+    };
+  }, [location]);
 
   return {
     // 状態

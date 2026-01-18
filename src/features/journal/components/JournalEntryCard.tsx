@@ -32,6 +32,7 @@ function JournalEntryCardComponent({ entry, onPress, className = '' }: JournalEn
 
   return (
     <Card
+      variant="light"
       onPress={onPress ? handlePress : undefined}
       accessibilityLabel={`${entry.place_name}, ${addressText}`}
       accessibilityHint="タップして詳細を表示"
@@ -41,22 +42,22 @@ function JournalEntryCardComponent({ entry, onPress, className = '' }: JournalEn
         {/* Main Content */}
         <View className="flex-1 pr-3">
           {/* Place Name */}
-          <Text className="text-car-lg font-bold text-text-primary mb-1" numberOfLines={1}>
+          <Text className="text-lg font-bold text-slate-800 mb-1" numberOfLines={1}>
             {entry.place_name}
           </Text>
 
           {/* Address */}
           <View className="flex-row items-center mb-2">
-            <MapPin size={14} color="#94a3b8" />
-            <Text className="text-car-sm text-text-secondary ml-1" numberOfLines={1}>
+            <MapPin size={14} color="#64748b" />
+            <Text className="text-sm text-slate-500 ml-1" numberOfLines={1}>
               {addressText}
             </Text>
           </View>
 
           {/* Date */}
           <View className="flex-row items-center mb-2">
-            <Calendar size={14} color="#94a3b8" />
-            <Text className="text-car-sm text-text-muted ml-1">{formatDate(entry.visited_at)}</Text>
+            <Calendar size={14} color="#64748b" />
+            <Text className="text-sm text-slate-400 ml-1">{formatDate(entry.visited_at)}</Text>
           </View>
 
           {/* Rating */}
@@ -65,7 +66,7 @@ function JournalEntryCardComponent({ entry, onPress, className = '' }: JournalEn
               <Star
                 key={i}
                 size={16}
-                color={i < entry.rating ? '#f59e0b' : '#475569'}
+                color={i < entry.rating ? '#f59e0b' : '#e2e8f0'}
                 fill={i < entry.rating ? '#f59e0b' : 'transparent'}
               />
             ))}
@@ -73,7 +74,7 @@ function JournalEntryCardComponent({ entry, onPress, className = '' }: JournalEn
 
           {/* Notes Preview */}
           {entry.notes && (
-            <Text className="text-car-sm text-text-muted mt-2" numberOfLines={2}>
+            <Text className="text-sm text-slate-400 mt-2" numberOfLines={2}>
               {entry.notes}
             </Text>
           )}
