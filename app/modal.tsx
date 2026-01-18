@@ -1,35 +1,29 @@
 import { StatusBar } from 'expo-status-bar';
-import { Platform, StyleSheet } from 'react-native';
-
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
+import { Platform, View, Text, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
+import { X } from 'lucide-react-native';
 
 export default function ModalScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Modal</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/modal.tsx" />
+  const router = useRouter();
 
-      {/* Use a light status bar on iOS to account for the black space above the modal */}
+  return (
+    <View className="flex-1 items-center justify-center bg-white p-6">
+      <Pressable
+        className="absolute right-4 top-4 rounded-full bg-gray-100 p-2 active:bg-gray-200"
+        onPress={() => router.back()}
+      >
+        <X size={24} color="#374151" />
+      </Pressable>
+
+      <View className="items-center">
+        <Text className="mb-4 text-2xl font-bold text-gray-900">モーダル</Text>
+        <View className="my-6 h-px w-4/5 bg-gray-200" />
+        <Text className="text-center text-gray-600">
+          このモーダルはアプリ内で情報を表示するために使用されます。
+        </Text>
+      </View>
+
       <StatusBar style={Platform.OS === 'ios' ? 'light' : 'auto'} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
-  },
-});
